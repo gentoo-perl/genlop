@@ -7,6 +7,7 @@ genlop 0.30.6 02/04/2007
 	. bug 119518, fixed "unary operator expected" error, thanks stuart.
 	. bug 120405, patch from bensberg for appropriate display of seconds
 	timestamp
+	. bug 137725, enhancement for -c displays
 
 genlop 0.30.5 17/08/2005
 	Emergency Bugfixing

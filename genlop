@@ -504,6 +504,7 @@ sub current() {
     # not check for sanity and have users check their FEATURES instead.
     my @targets      = ();
     my @sandbox_pids = qx{ps --no-header -o pid -C sandbox};
+	my ($e_curmerge, $e_lastmerge);
     if (scalar @sandbox_pids == 0) {
         print colored("!!!", $COLORS{'red'});
         print " Error: no working merge found.\n";
@@ -534,10 +535,12 @@ sub current() {
             my $handle;
             open_file($logfile, \$handle);
             foreach (<$handle>) {
-                if (m/^(.*?)\:  \>\>\> emerge .*?\)(.*?\/$ebuild_arg-[0-9].*?)to \//)
+				if (m/^(.*?)\:  \>\>\> emerge \((.*?) of (.*?)\)(.*?\/$ebuild_arg-[0-9].*?)to \//)
                 {
                     $e_start   = $1;
-                    $e_current = $2;
+					$e_curmerge = $2;
+					$e_lastmerge = $3;
+					$e_current = $4;
                 }
                 if (m/^(.*?)\:  ::: completed .*?\) .*\/$ebuild_arg-[0-9].* to \//) {
                     $e_end = $1;
@@ -549,6 +552,7 @@ sub current() {
         }
         $e_end = CORE::time();
         &gtime($e_end - $e_start);
+		print "\n Currently merging $e_curmerge out of $e_lastmerge\n";
         print colored("\n \*$e_current\n\n", $COLORS{'blue'});
         print "       current merge time: ";
         $current_found = undef;
