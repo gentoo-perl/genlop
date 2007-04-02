@@ -1,0 +1,177 @@
+.TH "genlop" "1" "Jul 29 2005" "Giorgio Mandolfo" "Gentoo Linux log parser"
+.SH "NAME"
+genlop \- parses
+.I portage
+logfile(s) for information.
+.SH "SYNTAX"
+.B genlop
+.RB [ \-f 
+.IR logfile ]
+.RB [ \-\-date 
+.IR datespec ]
+.RB [ \-chiglnprstuv ]
+.I "name" ...
+.br 
+.SH "DESCRIPTION"
+.I genlop
+is a
+.I portage
+utility for extracting information about emerged ebuilds.
+.LP 
+Detailed features include:
+.br 
+ \- Nice colorful output.
+ \- Full Portage merge and unmerge history.
+ \- Display date, time and build time of every merge.
+ \- Display total and average build time of selected ebuilds[s].
+ \- Estimate upgrade time.
+ \- Watching current merge progress.
+ \- Use alternate portage logfile(s).
+ \- Compressed logfiles (gzip, bzip2) are supported
+ \- Match ebuild names using regular expressions.
+ \- Log corruption detection.
+ \- Display build specific USE and CFLAGS variables.
+ \- GMT/UTC or localized time and date.
+ \- Full portage rsync history.
+.SH "SYNTAX"
+.HP
+.I name
+is the name of a gentoo ebuild, it may be supplied in the form of:
+.br 
+ebuild (eg. genlop)
+.br 
+category/ebuild (eg. app\-portage/genlop)
+.br 
+category/ebuild\-version (eg. app\-portage/genlop\-0.16.3)
+.br
+.HP
+.I datespec 
+( argument to the --date option ) may be supplied in any form 
+parsed by Date::Manip e.g.
+.br
+yesterday
+.br
+last sunday
+.br
+02/15/2004
+.br
+and many more...
+
+.SH "OPTIONS"
+.LP 
+.TP 
+\fB\-f\fR \fIlogfile\fP
+specify the logfile to use instead of the default
+.B /var/log/emerge.log
+multiple -f options are supported, as is reading from compressed logfiles
+.TP 
+\fB\-g \-\-gmt\fR
+display time in GMT/UTC format (default is local time)
+.TP 
+\fB\-h \-\-help\fR
+output help information.
+.TP 
+\fB\-i \-\-info\fR
+prints a brief summary; this includes USE and CFLAGS for the currently installed ebuilds, average and total build time.
+.TP 
+\fB\-l \-\-list\fR
+lists complete merge history.
+.TP 
+\fB\-n \-\-nocolor\fR
+disables colored output.
+.TP 
+\fB\-r \-\-rsync\fR
+looks for portage rsync/sync history.
+.TP 
+\fB\-s \-\-search\fR \fIregexp\fP
+Select ebuilds matching the provided regular expression; depending on your shell you may need to escape some special characters.
+.TP 
+\fB\-S\fP
+use case sensitive matching, old (pre 0.30.2) behaviour.
+.TP 
+\fB\-t \-\-time\fR
+calculate merge time.
+.TP 
+\fB\-u \-\-unmerge\fR
+display unmerges.
+.TP 
+\fB\-v \-\-version\fR
+output version information.
+.TP 
+\fB\-\-date startdate [--date enddate]\fR
+will only select events between startdate and enddate, if enddate is not specified, examined period will be from startdate to current time.
+.TP 
+\fB\-p \-\-pretend\fR
+take output from a pretending emerge and calculate estimated build time.
+.TP 
+\fB\-c \-\-current\fR
+show the current merge in action.
+.LP 
+Please note that short options may be bundled and that
+.B \-t
+and
+.B \-l
+cannot be used together.
+.SH "EXAMPLES"
+.LP 
+The simplest way to use genlop is
+.br 
+genlop category/ebuild
+.LP 
+To view last 10 merges, run
+.br 
+genlop \-l | tail \-n 10
+.LP 
+To view how long merging openoffice took
+.br 
+genlop \-t openoffice
+.LP 
+To estimate how much 'emerge \-uU world' will take
+.br 
+emerge \-pU world | genlop \-\-pretend
+.LP 
+Have a console watching the latest merging ebuild during upgrade
+.br 
+watch genlop \-\-current
+.LP 
+For use in terminals that do not support ANSI
+.br 
+genlop \-un x11\-libs/qt
+.LP 
+If you rotate emerge.log you could use:
+.br 
+genlop \-tu \-f /var/log/emerge.log \-f /var/log/emerge.log.0 \-f /var/log/emerge.log.1.gz ...  <category/ebuild>
+.LP 
+Full merge history
+.br 
+genlop \-lu
+.LP 
+Search ebuilds that match a regular expression
+.br 
+genlop \-s gen[lt]o
+.LP 
+what was it that I installed last week ?
+.br 
+genlop -l --date last week
+.LP 
+and the week before that ?
+.br 
+genlop -l --date 2 weeks ago --date last week
+.LP
+You have installed an ftp server on monday and you want to know what USE was
+specified. If you don't remember the exact ebuild name, use -s and perform
+a regexp search
+.br
+genlop -si ftp --date last monday --date last monday
+.SH "REQUIREMENTS"
+Perl module Date::Manip is required for genlop to work.
+.br
+Perl module Time::Duration is no longer required since genlop 0.30
+.SH "BUGS"
+.RB "- The " "--current" " option only works if FEATURES contains 'sandbox' and does not contain 'userpriv', or if FEATURES contains 'sandbox' and 'userpriv' and 'usersandbox'. You can check this by running `portageq envvar FEATURES\' and checking its output."
+.TP
+ - definitley too many options !
+.SH "AUTHORS"
+.LP 
+Giorgio Mandolfo <giorgio@pollycoke.org>
+Antonio Dolcetta <adolcetta@infracom.it>

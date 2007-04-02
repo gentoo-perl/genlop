@@ -1,0 +1,845 @@
+#!/usr/bin/perl -w
+#
+# $Id: genlop,v 1.21 2005/08/16 23:50:32 antonio Exp $
+#
+#    This program is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program; if not, write to the Free Software
+#    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+# genlop-0.30.5 Copyright 2004 Giorgio Mandolfo <giorgio@pollycoke.org>
+#
+
+#use strict;
+use POSIX;
+use Term::ANSIColor;
+use Date::Manip;
+
+my $version  = "0.30.4";
+my @logfiles = ("/var/log/emerge.log");
+my %COLORS   = (
+    'blue'  => 'bold blue',
+    'green' => 'bold green',
+    'red'   => 'bold red',
+);
+my ($e_count, $w_count, $tm_secondi) = (0, 0, 0);
+# variabili per la funzione parse
+my (
+    $search_found,  $unmerge_found, $list_found,    $file_found,
+    $time_found,    $help_found,    $current_found, $pretend_found,
+    $version_found, $info_found,    $gmt_found,     $rsync_found,
+    $info_ok,       $info_target,   $ssearch_found
+);
+# variabili globali del programma
+my ($e_start, $e_end, $search_string, $m_count, $ebuild_found);
+# variabili di datecompare
+my ($fh, $elog);
+my @targets;
+my $progname = $0;
+$progname =~ s!.*/!!;
+
+my ($userdate1, $userdate2, $searchdate1, $searchdate2);
+
+sub datecompare ($) {
+    # datecompare( epoch )
+    # returns -1 if epoch is outside searchdates 1 and 2
+    # returns 1 if inside
+    # returns undefined for errors
+    # expects searchdate1 to be before searchdate2 and neither should be in
+    # the future (but it's probably ok if searchdate2 is)
+    die if (!$searchdate1);
+    die if (!$searchdate2);
+    my $epochdate = $_[0];
+    if (($epochdate <=> $searchdate1) < 0) {
+        # epoch is outside period
+        return -1;
+    } elsif (($epochdate <=> $searchdate2) > 0) {
+        # epoch is outside period
+        return -1;
+    } else {
+        return 1;
+    }
+    #TODO check that it's actually the case
+}
+
+# test a file, before opening it for reading
+# second argument is a reference to a variable thet gets populated with
+# a filehandle to the first argument
+sub open_file {
+    my ($file, $fh) = @_;
+    if ($file eq "/var/log/emerge.log" && !-r $file) {
+        print "$progname: cannot open ".$file
+          ." for reading\n"
+          ."maybe you are not a member of the portage group ?\n"
+          ."try genlop -h for help\n";
+        exit 1;
+    }
+    if (-T $file) {
+        open $$fh, "< $file"
+          or die "could not open $file";
+        return 0;
+    }
+    # if we got here file is unreadable, might simply be compressed...
+    # let's try this
+    my $nature = qx{file $file}
+      or die "could not determine nature of (nonASCII) $file";
+    if ($nature =~ /gzip/) {
+        open $$fh, "gzip -d -c $file |"
+          or die "could not open (gzipped) $file";
+        return 0;
+    } elsif ($nature =~ /bzip/) {
+        open $$fh, "bzip2 -d -c $file |"
+          or die "could not open (bzipped) $file";
+        return 0;
+    } else {
+        # giving up...
+        print "could not determine file type of $file\n";
+        exit 1;
+    }
+}
+
+# orderes logfiles by date
+sub order_logs (@) {
+    my @files = @_;
+    my %ordered;
+    foreach my $logfile (@files) {
+        my $handle;
+        open_file("$logfile", \$handle);
+        my $fline = <$handle>;    # first line
+        $ordered{$logfile} = (split /:/, $fline)[0];
+    }
+    return sort { $ordered{$a} <=> $ordered{$b} } keys %ordered;
+}
+
+# parse(arg), a hacked-up version of getopts
+# sets (global) variables for options and returns.
+# non option arguments are pushed into a (global) array
+#
+# FIXME Getopt::Long would be much better
+sub parse ($) {
+    my $arg    = $_[0];
+    my $nexist = 0;
+    chomp $arg;
+    # long (--foo) options
+    if ($arg =~ /^--/) {
+      LSWITCH: {
+            $current_found = 1, last LSWITCH if ($arg eq "--current");
+            $pretend_found = 1, last LSWITCH if ($arg eq "--pretend");
+            $help_found    = 1, last LSWITCH if ($arg eq "--help");
+            $time_found    = 1, last LSWITCH if ($arg eq "--time");
+            $unmerge_found = 1, last LSWITCH if ($arg eq "--unmerge");
+            $ENV{'ANSI_COLORS_DISABLED'} = 1, last LSWITCH
+              if ($arg eq "--nocolor");
+            $list_found    = 1, last LSWITCH if ($arg eq "--list");
+            $version_found = 1, last LSWITCH if ($arg eq "--version");
+            $search_found  = 1, last LSWITCH if ($arg eq "--search");
+            $info_found    = 1, last LSWITCH if ($arg eq "--info");
+            $gmt_found     = 1, last LSWITCH if ($arg eq "--gmt");
+            $rsync_found   = 1, last LSWITCH if ($arg eq "--rsync");
+
+            if ($arg eq "--date") {
+                $date_found = 1;
+                if (!$userdate1) {
+                    help() if !$ARGV[0];
+                    $userdate1 = ParseDate(\@ARGV);
+                    unless (UnixDate($userdate1, "%s")) {
+                        print color 'bold red';
+                        print "!!! Error:",
+                          " invalid date format (try mm/dd/yyyy)";
+                        print color 'reset';
+                        print "\n";
+                        exit -1;
+                    }
+                    if ((UnixDate($userdate1, "%s") <=> time) <= 0) {
+                        $searchdate1 = UnixDate($userdate1, "%s");
+                        $searchdate2 = time;
+                    } else {
+                        die "Date $userdate1 is in the future, not good\n";
+                    }
+                } elsif (!$userdate2) {
+                    $userdate2 = ParseDate(\@ARGV);
+                    unless (UnixDate($userdate2, "%s")) {
+                        print color 'bold red';
+                        print "!!! Error:",
+                          " invalid date format (try mm/dd/yyyy)";
+                        print color 'reset';
+                        print "\n";
+                        exit -1;
+                    }
+                    if (
+                        (
+                            UnixDate($userdate1, "%s")
+                            <=> UnixDate($userdate2, "%s")
+                        ) <= 0
+                      )
+                    {
+                        $searchdate2 = UnixDate($userdate2, "%s");
+                    } else {
+                        $searchdate2 = $searchdate1;
+                        $searchdate1 = UnixDate($userdate2, "%s");
+                    }
+                } else {
+                    print "too many --date arguments ?\n";
+                    die;
+                }
+                last LSWITCH;
+            }
+            $nexist = $arg;
+        }    # END LSWITCH
+        if ($nexist) {
+            # This is the standard error message
+            print color 'bold red';
+            print "!!! Error: $nexist, invalid option.";
+            print color 'reset';
+            print "\n";
+            exit -1;
+        }
+        return 0;
+    }
+    # short bsd-style options
+    if ($arg =~ /^-.*/) {
+        until ($arg eq "-") {
+            my $opt = chop($arg);
+          SSWITCH: {
+                $help_found                  = 1, last SSWITCH if ($opt eq "h");
+                $help_found                  = 1, last SSWITCH if ($opt eq "?");
+                $time_found                  = 1, last SSWITCH if ($opt eq "t");
+                $unmerge_found               = 1, last SSWITCH if ($opt eq "u");
+                $ENV{'ANSI_COLORS_DISABLED'} = 1, last SSWITCH if ($opt eq "n");
+                $list_found                  = 1, last SSWITCH if ($opt eq "l");
+                $search_found                = 1, last SSWITCH if ($opt eq "s");
+                $version_found               = 1, last SSWITCH if ($opt eq "v");
+                $info_found                  = 1, last SSWITCH if ($opt eq "i");
+                $ssearch_found               = 1, last SSWITCH
+                  if ($opt eq "S");
+                $current_found = 1, last SSWITCH if ($opt eq "c");
+                $pretend_found = 1, last SSWITCH if ($opt eq "p");
+                $rsync_found   = 1, last SSWITCH if ($opt eq "r");
+                $gmt_found     = 1, last SSWITCH if ($opt eq "g");
+                $ebuild_found  = 1, last SSWITCH if ($opt eq "e");
+
+                if ($opt eq "f") {
+                    if (!$ARGV[0]) {
+                        print color 'bold red';
+                        print "!!! Error: no logfile specified.";
+                        print color 'reset';
+                        print "\n";
+                        exit -1;
+                    }
+                    if (!-r $ARGV[0]) {
+                        print color 'bold red';
+                        print "!!! Error: logfile ".$ARGV[0]." not readable ",
+                          "or not found.";
+                        print color 'reset';
+                        print "\n";
+                        exit -1;
+                    }
+                    print "using logfile ".$ARGV[0]."\n";
+                    if (!$file_found) {
+                        $logfiles[0] = shift @ARGV;
+                        $file_found = 1;
+                    } else {
+                        push @logfiles, shift(@ARGV);
+                    }
+                    last SSWITCH;
+                }
+                $nexist = $opt;
+            }    # END SSWITCH
+        }
+        if ($nexist) {
+            print color 'bold red';
+            print "!!! Error: \-$nexist, invalid option.";
+            print color 'reset';
+            print "\n";
+            exit -1;
+        }
+        return 0;
+    }
+    push @targets, $arg;
+    return 0;
+}
+
+# provides help information
+sub help () {
+    print "Usage: ", colored("genlop ", $COLORS{'blue'}), "[",
+      colored("options",          $COLORS{'green'}), "] [",
+      colored("-f ",              $COLORS{'green'}), "logfile] [",
+      colored("category/package", $COLORS{'green'}), "]\n\n",
+      colored("Options:\n",       $COLORS{'green'}),
+      colored("  -c   ",          $COLORS{'green'}),
+      "display the currently compiling packages (if any)\n",
+      colored("  -e   ", $COLORS{'green'})
+      ."display package history; default if any option is used.\n",
+      colored("  -f   ", $COLORS{'green'}),
+      "read emerge log information from \"logfile\" instead of ", $logfiles[0],
+      "\n", colored("  -h   ", $COLORS{'green'}), "print this help\n",
+      colored("  -i   ", $COLORS{'green'}),
+      "extra infos for the selected package (build specific USE ",
+      "and CFLAGS\n       variables, average build time, etc)\n",
+      colored("  -g   ", $COLORS{'green'}),
+      "display GMT/UTC, not localized time.\n",
+      colored("  -l   ", $COLORS{'green'}), "show full merge history.\n",
+      colored("  -n   ", $COLORS{'green'}), "no color in output\n",
+      colored("  -p   ", $COLORS{'green'}),
+      "estimate build time from a piped \"emerge -p\" output\n",
+      colored("  -r   ", $COLORS{'green'}),
+      "search for portage tree sync/rsync history.\n",
+      colored("  -s   ", $COLORS{'green'}),
+      "use (case insensitive) regular expressions to match package names\n",
+      colored("  -S   ", $COLORS{'green'}),
+      "use case sensitive regular expressions to match package names\n",
+      colored("  -t   ", $COLORS{'green'}),
+      "calculate merge time for the specific package(s).\n",
+      colored("  -u   ", $COLORS{'green'}),
+      "show when packages have been unmerged.\n",
+      colored("  -v   ", $COLORS{'green'}),
+      "display genlop version and exit.\n\n",
+      colored("  --date datestring1", $COLORS{'green'}), " [",
+      colored("datestring2", $COLORS{'green'}),
+      "]  only shows results between datestring1\n",
+      "       and datestring2. datestring2 dafaults to \"now\" if not",
+      " explicitly set.\n", "       (e.g. genlop --list --date 3 days ago)\n",
+      "\nThis program is licensed under the GPL v2. See COPYING.\n",
+      "For further info about genlop please read the man page.\n";
+    exit 0;
+}
+
+sub gtime($) {
+    my $gtime = $_[0];
+    chomp($gtime);
+    $secs  = $gtime % 60;
+    $gtime = ($gtime - $secs) / 60;
+    $mins  = $gtime % 60;
+    $gtime = ($gtime - $mins) / 60;
+    $hours = $gtime % 24;
+    $gtime = ($gtime - $hours) / 24;
+    $days  = $gtime % 7;
+    if ($gtime < 0) {
+        $gtime = 0;
+    }
+}
+
+sub print_gtime() {
+    if ($days > 0) {
+        print colored("$days", $COLORS{'green'}), " day";
+        print "s" if ($days > 1);
+        print ", ";
+    }
+    if ($hours > 0) {
+        print colored("$hours", $COLORS{'green'}), " hour";
+        print "s" if ($hours > 1);
+        print ", ";
+    }
+    if ($mins > 0) {
+        print colored("$mins", $COLORS{'green'}), " minute";
+        print "s" if ($mins > 1);
+        print " and " if ($secs > 0 and !$pretend_found);
+    }
+    if ($mins < 1 && $hours < 1 && $secs > 0 && $current_found) {
+        print colored("less than a minute", $COLORS{'green'});
+    } elsif ($mins < 1 && $hours < 1 && $secs > 0 && $pretend_found) {
+        print colored("less than a minute", $COLORS{'green'});
+    } elsif ($secs > 0 && !$pretend_found) {
+        print colored("$secs", $COLORS{'green'}), " second";
+        print "s" if ($secs > 1);
+    }
+    print ".";
+}
+
+sub gen_regexp ($) {
+    # generates the correct regexp depending on what the user asked us.
+    # default is to search only the correct package name (eg. mozilla)
+    # a different regexp is needed in the following cases:
+    # argument is in the form category/
+    # argument is in the form category/ebuild
+    # argument is in the form category/ebuild-version
+    # the user can provide his own regular expression(s) via the -s option
+    my $arg = $_[0];
+    my ($category, $ebuild, $version);
+    my $regexp;
+    my @list;
+
+    if ($list_found) {
+        $regexp = qr/(.*)(-[0-9]{1,7}.*?)/i;
+        return "$regexp";
+    }
+    if ($search_found) {
+        # return user supplied regexp as-is
+        $regexp =
+          $ssearch_found
+          ? qr/(.*$arg.*?)(-[0-9]{1,7}.*?)/
+          : qr/(.*$arg.*?)(-[0-9]{1,7}.*?)/i;
+        return "$regexp";
+    }
+    # check if we were asked only the category
+    if ($arg =~ /.*?\/$/) {
+        $category = $arg;
+        $regexp   =
+          $ssearch_found
+          ? qr/($category.*?)(-[0-9]{1,7}.*?)/
+          : qr/($category.*?)(-[0-9]{1,7}.*?)/i;
+        return "$regexp";
+    }
+    @list = split(/\//, $arg);
+    $ebuild = $list[0];
+    if ($list[1]) {
+        $category = $list[0];
+        $ebuild   = $list[1];
+        @list     = ();
+        @list     = split(/(-[0-9]{1,7})/, $ebuild);
+        if ($list[1]) {
+            $ebuild  = $list[0];
+            $version = $list[2] ? join('', $list[1], $list[2]) : $list[1];
+            $regexp  =
+              $ssearch_found
+              ? qr!($category\/$ebuild)($version)!
+              : qr!($category\/$ebuild)($version)!i;
+            return "$regexp";
+        }
+        $regexp =
+          $ssearch_found
+          ? qr!($category\/$ebuild)(-[0-9]{1,7}.*?)!
+          : qr!($category\/$ebuild)(-[0-9]{1,7}.*?)!i;
+        return "$regexp";
+    }
+    $regexp =
+      $ssearch_found
+      ? qr!(.*?/$ebuild)(-[0-9]{1,7}.*?)!
+      : qr!(.*?/$ebuild)(-[0-9]{1,7}.*?)!i;
+    return "$regexp";
+}
+
+# --pretend or -p takes an emerge -p `-e -D world, system`, anything you want
+# and elaborates its output. for each package is calculated the average build
+# time and summed together. this is the estimated merge time
+sub pretend() {
+    if ($pretend_found) {
+        @targets = ();
+        print "These are the pretended packages:";
+        print " (this may take a while; wait...)\n\n";
+        # open STDIN; that's why emerge -p foo is piped to a genlop -p
+        while (<STDIN>) {
+            if ($_ =~ m/^\[e.*\] (.*?)\/(.*?)(\-[0-9])/) {
+                push @targets, $2;
+                print;
+            }
+        }
+        foreach $ebuild_arg (@targets) {
+            # we track the last ebuild processed with $last_ebuild variable
+            $last_ebuild = $ebuild_arg;
+            $ebuild_arg =~ s/(\+)/\\$1/g;
+            foreach my $logfile (@logfiles) {
+                my $handle;
+                open_file($logfile, \$handle);
+                foreach (<$handle>) {
+                    if (m/^(.*?)\:  \>\>\> emerge.*?\/$ebuild_arg-[0-9].*/) {
+                        $e_start = $1;
+                    }
+                    if (m/^(.*?)\:  ::: completed .*?\) .*\/$ebuild_arg-[0-9].* to \//)
+                    {
+                        $e_end = $1;
+                        $tm_secondi += ($e_end - $e_start);
+                        $e_count++;
+                    }
+                }
+            }
+            if ($e_count == 0) {
+                $ebuild_arg =~ s/\\//g;
+                print "\n!!! Error: couldn't get previous ",
+                  "merge of $ebuild_arg; skipping...";
+                # if a pretended package haven't any successfull merge
+                # stored in logfile (ie a new package required by
+                # another, or a logfile corruption), prints a warning
+                # and keep track with $last_skipped
+                $last_skipped = $ebuild_arg;
+            } else {
+                $m_secondi += $tm_secondi / ($e_count);
+                $e_count      = 0;
+                $tm_secondi   = 0;
+                $last_skipped = "none-skipped";
+            }
+        }
+        if (@targets) {
+            if ($last_ebuild =~ m/$last_skipped/) {
+                print color 'bold red';
+                print "\n!!! Error: $last_skipped never merged; ",
+                  "estimated time unknown.";
+                print color 'reset';
+                print "\n";
+                exit;
+            }
+            print "\n\nEstimated update time: ";
+            &gtime($m_secondi);
+            &print_gtime;
+            print "\n";
+        } else {
+            print color 'bold red';
+            print "\n!!! Error: no pretended packages found.";
+            print color 'reset';
+            print "\n";
+        }
+        exit;
+    }
+}
+
+sub current() {
+    # support for 'current' merge.
+    #
+    # this whole 'current' thing is based on having sandboxind enabled
+    # we need to check for it, basically sandboxing is on if
+    # FEATURES contains 'sandbox' and does not contain 'userpriv'
+    # FEATURES contains 'sandbox' and contains both 'userpriv' and 'usersandbox'
+    # 20050815 - JeR: On slow systems, running portageq takes a lot of time,
+    # sometimes enough to miss all the sandbox action completely. Better to
+    # not check for sanity and have users check their FEATURES instead.
+    my @targets      = ();
+    my @sandbox_pids = qx{ps --no-header -o pid -C sandbox};
+    if (scalar @sandbox_pids == 0) {
+        print colored("!!!", $COLORS{'red'});
+        print " Error: no working merge found.\n";
+        print "(the -c option only works if there is"
+          ." an ongoing compilation, see manpage)\n";
+        exit;
+    }
+    foreach my $pid (@sandbox_pids) {
+        chomp $pid;
+        $pid =~ s/\s//g;
+        open(my $cmdline, "/proc/$pid/cmdline");
+        while (<$cmdline>) {
+            if ($_ =~ m/^\[(.*?)\-[0-9].*?\]/g) {
+                $current = $1;
+            }
+        }
+        push @targets, $current;
+    }
+    if (scalar @targets == 0) {
+        print colored("!!!", $COLORS{'red'});
+        print "oops! should not happen, pease file bug\n";
+        print "empty \@targets\n";
+        exit 1;
+    }
+    foreach $ebuild_arg (@targets) {
+        $ebuild_arg =~ s/(\+)/\\$1/g;
+        foreach my $logfile (@logfiles) {
+            my $handle;
+            open_file($logfile, \$handle);
+            foreach (<$handle>) {
+                if (m/^(.*?)\:  \>\>\> emerge .*?\)(.*?\/$ebuild_arg-[0-9].*?)to \//)
+                {
+                    $e_start   = $1;
+                    $e_current = $2;
+                }
+                if (m/^(.*?)\:  ::: completed .*?\) .*\/$ebuild_arg-[0-9].* to \//) {
+                    $e_end = $1;
+                    $e_count++;
+                    &gtime($e_end - $e_start);
+                    $tm_secondi += ($e_end - $e_start);
+                }
+            }
+        }
+        $e_end = CORE::time();
+        &gtime($e_end - $e_start);
+        print colored("\n \*$e_current\n\n", $COLORS{'blue'});
+        print "       current merge time: ";
+        $current_found = undef;
+        &print_gtime();
+        $current_found = 1;
+        print "\n";
+        print "       ETA: ";
+
+        if ($e_count && $e_start) {
+            &gtime(($tm_secondi / $e_count) - ($e_end - $e_start));
+            if (($e_end - $e_start) >= ($tm_secondi / $e_count)) {
+                print colored("any time now.\n", $COLORS{'green'});
+            } else {
+                &print_gtime();
+                print "\n";
+            }
+        } else {
+            print color 'bold red';
+            print "unknown.";
+            print color 'reset';
+            print "\n";
+        }
+    }
+    exit;
+}
+
+sub info($) {
+    my $package = $_[0];
+    if ($list_found)   { &help(); }
+    if ($e_count)      { $m_count = $e_count - $w_count; }
+    if ($m_count == 0) {
+        print colored("Total merge time unknown.\n\n", $COLORS{'red'});
+    } else {
+        print "\n   Total builds: ", colored("$e_count", $COLORS{'green'});
+        print "\n   Global build time: ";
+        &gtime($tm_secondi);
+        &print_gtime();
+        if ($w_count) {
+            print " Global build time of $m_count merges.\n";
+        } else {
+            print "\n";
+        }
+        if ($e_count > 1) {
+            print "   Average merge time: ";
+            &gtime($tm_secondi / $m_count);
+            &print_gtime();
+            print "\n";
+        }
+        $e_count    = 0;
+        $tm_secondi = 0;
+        #$gtime      = 0;
+    }
+    $e_count = 0;
+    print "\n   Info about currently installed ebuild:\n";
+    opendir(DIR, "/var/db/pkg/") || die "can't open /var/db/pkg/ $!\n";
+    while (defined($categoria = readdir(DIR))) {
+        if ($package =~ m/^$categoria.*/g) {
+            opendir(DIR2, "/var/db/pkg/$categoria");
+            while (defined($package_dir = readdir(DIR2))) {
+                #$package =~ s/(\+)/\\$1/g;
+                $tmp_package = $package;
+                $tmp_package =~ s/\+/\\+/g;
+                if ("$categoria/$package_dir" =~ m/$tmp_package\-[0-9].*/) {
+                    $info_ok = 1;
+                    print colored("\n   * $categoria/$package_dir\n",
+                        $COLORS{'blue'});
+                    $package_dir =~ s/(\+)/\\$1/g;
+                    #foreach $_ (@logfile_cache) {
+                    foreach my $logfile (@logfiles) {
+                        my $handle;
+                        open_file($logfile, \$handle);
+                        foreach (<$handle>) {
+                            my $pattern = gen_regexp("$categoria/$package_dir");
+                            if ( m/^([0-9]{10})\:  ::: completed .*?\) $pattern to \//) {
+                                if ($gmt_found) {
+                                    $e_date = scalar gmtime "$1";
+                                } else {
+                                    $e_date = scalar localtime "$1";
+                                }
+                            }
+                        }
+                    }
+                    print "   Install date: ";
+                    print colored("$e_date\n", $COLORS{'green'});
+                    # we use 3 array to collect data: before processing they are
+                    # 	@unused_use: contain packages' USEs
+                    #	@pkg_use: USE declared before compiling that package
+                    #	@used_use: empty
+                    my (@potential_use, @pkg_use, @used_use, @unused_use);
+                    # each installed package store its information here
+                    my $db_pkg_dir = "/var/db/pkg/$categoria/$package_dir/";
+                    if ("$categoria/$package_dir" =~ m/.*\/(.*)/g) {
+                   # we search into the installed ebuild for USE flags available
+                   # and store them in @potential_use.
+                        open(pkg_ebuild, "$db_pkg_dir/$1.ebuild") || return;
+                        while (<pkg_ebuild>) {
+                            if ($_ =~ m/^IUSE=\"(\$\{IUSE\} )?(.*)"/g) {
+                                @potential_use = split(/\ /, $2);
+                            }
+                        }
+                    }
+                # this file lists every USE flag defined, even ones in make.conf
+                # we push'em in @pkg_use
+                    open(pkg_use, "$db_pkg_dir/USE") || return;
+                    while (<pkg_use>) {
+                        @pkg_use = split(/\ /, $_);
+                    }
+         # for every possible package USE we search into USEs stored in @pkg_use
+         # if a match is found we move it from @potential_use in @used_use.
+         # in this way, when every possible package USE are processed, @used_use
+         # contain only used ones and @potential_use the not used ones.
+                  USE: foreach my $use (@potential_use) {
+                        chomp($use);
+                        foreach my $pkg (@pkg_use) {
+                            chomp($pkg);
+                            if ($use eq $pkg) {
+                                push(@used_use, $use);
+                                next USE;
+                            }
+                        }
+                        push(@unused_use, $use);
+                    }
+                    # finally we print'em out
+                    print "   USE=\"", colored("@used_use", $COLORS{'red'});
+                    foreach $unused (@unused_use) {
+                        print colored(" -$unused", $COLORS{'blue'});
+                    }
+                    print "\"\n";
+                    # easy work here: we simply print the CFLAGS file
+                    print "   CFLAGS=\"";
+                    open(pkg_cflag, "$db_pkg_dir/CFLAGS");
+                    while (<pkg_cflag>) {
+                        chomp();
+                        print();
+                    }
+                    print "\"\n";
+                }
+            }
+        }
+    }
+    if (!$info_ok) { print "   none installed.\n"; }
+}
+###
+# supporto iniziale per rsync/sync
+sub rsync() {
+    if ($_ =~ m/^(.*?)\:  \=\=\= r?sync/g) {
+        if ($gmt_found) {
+            $date = scalar gmtime "$1";
+        } else {
+            $date = scalar localtime "$1";
+        }
+        print "     rsync'ed at >>> ";
+        print colored("$date\n", $COLORS{'green'});
+    }
+    print color 'reset';
+}
+
+#######
+# *Start*
+#######
+
+help() if (!$ARGV[0]);
+
+# parse arguments
+parse(shift @ARGV) while ($ARGV[0]);
+
+help() if ($help_found);
+if ($version_found) {
+    print "genlop $version by Giorgio Mandolfo and Antonio Dolcetta\n"
+      ."please send praise to Giorgio <giorgio\@pollycoke.org>\n"
+      ."and bugs/flames to Antonio <adolcetta\@infracom.it>\n"
+      ."Copyright 2004 Giorgio Mandolfo.\n"
+      ."Distribuited under the GPL v2. See COPYING for details\n";
+    exit;
+}
+
+if (    !$targets[0]
+    and !$list_found
+    and !$current_found
+    and !$pretend_found
+    and !$rsync_found)
+{
+    help();
+}
+
+# FIXME questi a cosa servono ?
+if ($rsync_found)   { @targets = (); push @targets, "-r"; }
+if ($list_found)    { @targets = (); push @targets, "-l"; }
+if ($pretend_found) { @targets = (); push @targets, "-p"; }
+if ($current_found) { @targets = (); push @targets, "-c"; }
+
+# main code...
+#cache_files(\@logfiles, \@logfile_cache);
+if (scalar @logfiles > 1) {
+    @logfiles = order_logs(@logfiles);
+}
+my $ebuild_arg;
+foreach $ebuild_arg (@targets) {
+    # this is for packages like gtk+
+    $ebuild_arg =~ s/(\+)/\\$1/g;
+    #foreach $_ (@logfile_cache) {
+    foreach my $logfile (@logfiles) {
+        my $handle;
+        open_file($logfile, \$handle);
+        foreach (<$handle>) {
+            my $pattern = gen_regexp($ebuild_arg);
+            if ($date_found) {
+                if ($_ =~ m/^([0-9]{10})\:/) {
+                    if (datecompare($1) <= 0) {
+                        next;
+                    }
+                }
+            }
+            if ($pretend_found) { &pretend; }
+            if ($current_found) { &current; }
+            if ($rsync_found)   { &rsync; }
+            if ($time_found or $info_found) {
+                if ($_ =~ m/^([0-9]{10})\:  \>\>\> emerge .*?\) $pattern/) {
+                    $e_start     = $1;
+                    $info_target = $2;
+                }
+            }
+            if ($_ =~ m/^([0-9]{10})\:  ::: completed .*?\) $pattern to \//) {
+                if ($gmt_found) {
+                    $e_date = scalar gmtime "$1";
+                } else {
+                    $e_date = scalar localtime "$1";
+                }
+                $e_end = $1;
+                if ($time_found or $info_found) {
+                    &gtime($e_end - $e_start);
+                    if ($e_end - $e_start > 0) {
+                        $tm_secondi += ($e_end - $e_start);
+                    } else {
+                        $tm_secondi += 0;
+                    }
+                }
+                if (!$e_count) {
+                    my $p_ebuild = " \* $2\n\n";
+                    $p_ebuild =~ s/\\//g;
+                    if (!$search_found) {
+                        if ($ebuild_arg =~ m/\/$/) {
+                            print colored("\* $ebuild_arg\n\n",
+                                $COLORS{'blue'});
+                        } else {
+                            print colored("$p_ebuild", $COLORS{'blue'});
+                        }
+                    } else {
+                        print colored(" \* matches found:\n\n",
+                            $COLORS{'blue'});
+                    }
+                }
+                if ($ebuild_found or !$info_found or $time_found) {
+                    print "     $e_date >>>",
+                      colored(" $2$3\n", $COLORS{'green'});
+                }
+                if ($time_found) {
+                    print "       merge time: ";
+                    if (($e_end - $e_start) > 0) {
+                        &print_gtime();
+                        print "\n\n";
+                    } else {
+                        print color 'bold red';
+                        print "log error; merge time unknown.";
+                        print color 'reset';
+                        print "\n\n";
+                        $w_count++;
+                    }
+                }
+                $e_count++;
+            }
+            if ($unmerge_found or $info_found) {
+                $pattern = gen_regexp($ebuild_arg);
+                if (m/^([0-9]{10})\:  \>\>\> unmerge success: ($pattern.*)/g) {
+                    $u_date = scalar localtime "$1";
+                    if ($unmerge_found) {
+                        print "     $u_date <<<",
+                          colored(" $2\n", $COLORS{'red'});
+                    }
+                }
+            }
+        }
+    }
+    if (!$e_count and !$list_found and !$rsync_found) {
+        print color 'bold red';
+        print "!!! Error: no merge found for \'$ebuild_arg\'";
+        print color 'reset';
+        print "\n";
+    } elsif ($info_found) {
+        &info($info_target);
+    } else {
+        $e_count = 0;
+    }
+}
+

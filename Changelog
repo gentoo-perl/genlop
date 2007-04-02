@@ -1,0 +1,164 @@
+$Id: Changelog,v 1.4 2005/08/16 23:23:08 antonio Exp $
+
+genlop                  |  by Giorgio Mandolfo 
+Gentoo Linux log parser |  and Antonio Dolcetta
+
+genlop 0.30.5 17/08/2005
+	Emergency Bugfixing
+	. mispelled chomp as chop, ugly! <hits self on head with big hammer>
+	. Jeroen Roovers <rooversj@xs4all.nl> submitted patches for correct handling
+	  of dashes in --current and --pretend, for correct handling of whitespace
+	  during sandbox detection AND for bypassing portageq slowness, thanks !
+	
+genlop 0.30.4 29/07/2005
+	More Bugfixes:
+	. now uses ps to find pids of sandbox processes for the -c option 
+	  instead of hardcoded /tmp/sandbox.pids which no longer exists in the
+	  latest emerge versions (thanks CJ van den Berg <cj@vdbonline.com>)
+	  We'll see how long this solution lasts...
+	  closes gentoo bugzilla #99823
+	. fixed a problem where the -c option would uncorrectly print "any time
+	  now" (thanks David Morton <bob@littletimmy.homelinux.com>)
+	  closes gentoo bugzilla #97049
+	. genlop.bash.completion now gets PORTAGEDIR from make.conf instead of
+	  hardcoding /usr/portage (thanks JeR <jer@xs4all.nl>)
+	  closes gentoo bugzilla #93853
+	. fixed an off by one error in the --date code 
+	  closes gentoo bugzilla #80618
+	. reworked the code for ordering multiple logfiles
+
+genlop 0.30.3 22/11/2004
+========================
+	Bugfix release:
+	. fixed a bug that caused merges to be shown in the wrong order if
+	  multiple log files were used (thanks Nicolas Bock <nicolasbock@mac.com>)
+	. finally fixed that stupid bug with --current: now genlop prints a
+	  warning message if the running merge is taking longer than the
+	  expected (thanks nebula and many others)
+	. some weired/funny bugs get fixed (thanks Benjamin Carrell and oberyno) 
+	. thanks to Andrew Gaffney know genlop works correctly with -c and -i
+	  with packages whose name contains two or more '+'
+
+genlop 0.30.2 01/07/2004
+========================
+	Bugfix release:
+	. closed bug n. 54928 at bugs.gentoo.org
+	. genlop now detects correctly sandboxing (thanks Johan Kiviniemi)
+	. searches are now all case insensitive (just like emerge) the old
+	  behaviour is still available with the -S switch
+	. it is now possible to use genlop -lt
+	. fixed a problem when using ebuilds in the form category/package
+	. fixed ugly problems with colored output
+
+genlop 0.30.1 20/03/2004
+========================
+	Bugfix release:
+	. --gmt in 0.30 was broken. fixed
+	. bash-completion updated
+	. fixed a bug if -p used and estimated time is less than a minute
+	. -i now display install date of each currently installed ebuild
+	. fixed a bug if -c is used while merging a never installed package
+
+genlop 0.30 10/03/2004
+======================
+	Major feature enhancements release:
+	. option "-i" for extra info such as package specific USE and CFLAGS
+	. option "-r" for portage rsync history
+	. option "-g" for GMT based time
+	. option "--date" select events within startdate and enddate" (manpage)
+	. option "-e" (default if any other specified)
+	. option "--current" now display estimated time remaining
+	. Time::Duration is not anymore needed
+	. some cosmetic fixes
+	. genlop now handle as many as logfile at once
+	. added support for (b|g)zipped logfiles
+	. documentation updated
+
+genlop 0.20.2 04/10/2003
+========================
+	many small bugs about "--pretend" fixed
+	man page updated
+	new output interface, more readable
+
+genlop 0.20.1 25/09/2003
+========================
+	nocolor option now is "-n"
+	added README and Changelog thanks
+	fixed a --pretend bug
+
+genlop 0.20 24/09/2003	
+======================
+	use Time::Duration as engine
+	wrote a man page
+	added "-s" option for regexp search string
+	bash completion (see README)
+	added "--pretend" action for estimated upgrade time
+	added "--current" for infos about the merge in action
+	package name can be provided as 'category/ebuild' 
+		(eg. app-portage/genlop)
+	moved from gmtime to localtime
+	code and UI cleanup
+	multiple argument support
+
+genlop 0.16.3 26/07/2003
+========================
+	added "-w" option for uncolored output
+	added bundled option support
+	code partially rewritten by Antonio
+	minor output fixes
+
+genlop 0.16.2 01/07/2003
+========================
+	2 minor bugs fixed
+
+genlop 0.16.1 21/06/2003
+========================
+	fixed log corruption detection
+
+genlop 0.16 21/06/2003
+======================
+	merge time, total time and average time now are in the form of 
+		"hh,mm,ss"
+	added log corruption detection
+	code cleaned - the color handling mechanism was inspired by
+		Shaun Guth's tool splat
+	now genlop is beta software and considered for mass usage
+
+genlop 0.15 10/06/2003
+======================
+	option -d deleted. will be fixed when stable
+	added -l option; lists complete (un)merge history
+	fixed a really bad bug about "-u"
+
+genlop 0.14 02/06/2003
+======================
+	code cleaned
+	added "-u" option for unmerged packages
+	deleted "-e" option; now it is the default
+	genlop now shows version of packages merged/unmerged
+	medium compile time is displayed if "-t" is used
+	minor output fixes	
+		
+genlop 0.13 27/05/2003
+======================
+	added "-d" _unstable_ option
+	fixed /world/ bug
+	added "-f" option
+	new output layout
+	first public release
+	
+genlop 0.12 25/05/2003
+======================
+	fix /-U package/ bug
+	many other bugs closed
+	heavy code cleaning
+	
+genlop 0.11 23/05/2003
+======================
+	output colors added. Minor bugfixes
+	
+genlop 0.1 21/05/2003
+=====================
+	first non-public release. Date and time of compile now works partially
+	many known bugs still active
+

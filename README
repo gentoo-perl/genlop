@@ -1,0 +1,31 @@
+$Id: README,v 1.4 2005/07/29 15:38:00 antonio Exp $
+
+genlop 0.30.4		| by Giorgio Mandolfo <giorgio@pollycoke.org>
+Gentoo Linux log parser	| and Antonio Dolcetta <adolcetta@infracom.it>
+
+genlop is a small perl script for extracting useful information from 
+/var/log/emerge.log and printing it out in a nice and colorful output.
+Detailed usage information can be found in the genlop manpage.
+
+THANKS:
+
+We wish to thank the following people for help, patches and ideas:
+
+- Michael Stankiewicz, for his initial support
+- Shaun Guth, splat author, supplied us with great advice and inspiration
+  including the use of the ANSIColor builtin for color handling.
+- Many other people have given us advice, ideas and bugfixes, see Changelog
+  for more info
+  
+  Thanks to all of you
+
+
+you can always get the most updated version of genlop at
+
+	-- http://pollycoke.org/genlop.html --
+	 (thanks felipe for your great work!)
+
+feel free to mail us
+(Giorgio) at <giorgio@pollycoke.org>
+(Antonio) at <adolcetta@infracom.it>
+
