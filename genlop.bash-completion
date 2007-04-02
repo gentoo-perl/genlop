@@ -17,7 +17,7 @@ _genlop()
         origdir="${PWD}"
 	COMPREPLY=()
         portagedir="$( (source /etc/make.conf; echo ${PORTDIR}) )"
-        if [ ${portagedir} = "" ]; then
+        if [ -z "${portagedir}" ]; then
             portagedir=/usr/portage
         fi
         cur="${COMP_WORDS[COMP_CWORD]}"

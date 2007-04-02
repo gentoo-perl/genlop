@@ -1,7 +1,10 @@
-$Id: Changelog,v 1.4 2005/08/16 23:23:08 antonio Exp $
-
+								|  Maintainer: mcummings
+								|  Original code by:
 genlop                  |  by Giorgio Mandolfo 
 Gentoo Linux log parser |  and Antonio Dolcetta
+
+genlop 0.30.6 02/04/2007
+	bug 119518, fixed "unary operator expected" error, thanks stuart.
 
 genlop 0.30.5 17/08/2005
 	Emergency Bugfixing
