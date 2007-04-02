@@ -12,6 +12,8 @@ genlop 0.30.6 02/04/2007
 	. bug 136242, documentation update for datestring syntax
 	. bug 157103, added patch to call gentoo.linuxhowtos for compile times when
 	the local estimate isn't available. Awesome thanks to Sascha!
+	. bug 162306, modified to accecpt "=cat/pkg-version" calls, especially
+	during emerge -p output
 
 genlop 0.30.5 17/08/2005
 	Emergency Bugfixing

@@ -373,15 +373,29 @@ sub gen_regexp ($) {
     my @list;
 
     if ($list_found) {
+		if ( $arg =~ m{^=} )
+		{
+			$arg =~ s{^=}{};
+			$regexp = qr/(.*$arg).*?/;
+		} else {
         $regexp = qr/(.*)(-[0-9]{1,7}.*?)/i;
+	}
         return "$regexp";
     }
     if ($search_found) {
         # return user supplied regexp as-is
+		if ( $arg =~ m{^=} ) {
+			$arg =~ s{^=}{};
+        $regexp =
+          $ssearch_found
+          ? qr/(.*$arg)(.*?)/
+          : qr/(.*$arg)(.*?)/i;
+		} else {
         $regexp =
           $ssearch_found
           ? qr/(.*$arg.*?)(-[0-9]{1,7}.*?)/
           : qr/(.*$arg.*?)(-[0-9]{1,7}.*?)/i;
+	  }
         return "$regexp";
     }
     # check if we were asked only the category
@@ -403,11 +417,12 @@ sub gen_regexp ($) {
         if ($list[1]) {
             $ebuild  = $list[0];
             $version = $list[2] ? join('', $list[1], $list[2]) : $list[1];
+			$category =~ s{^=}{};
             $regexp  =
               $ssearch_found
               ? qr!($category\/$ebuild)($version)!
               : qr!($category\/$ebuild)($version)!i;
-            return "$regexp";
+			  return "$regexp";
         }
         $regexp =
           $ssearch_found
@@ -872,8 +887,10 @@ foreach $ebuild_arg (@targets) {
                     }
                 }
                 if ($ebuild_found or !$info_found or $time_found) {
-                    print "     $e_date >>>",
-                      colored(" $2$3\n", $COLORS{'green'});
+					my $eb = $2;
+					my $extra = $3||"";
+						print "     $e_date >>>",
+                      colored(" $eb$extra\n", $COLORS{'green'});
                 }
                 if ($time_found) {
                     print "       merge time: ";
