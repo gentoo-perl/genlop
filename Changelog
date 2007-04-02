@@ -9,6 +9,7 @@ genlop 0.30.6 02/04/2007
 	timestamp
 	. bug 137725, enhancement for -c displays
 	. bug 93853, sourcing more than make.conf for PORTDIR location
+	. bug 136242, documentation update for datestring syntax
 
 genlop 0.30.5 17/08/2005
 	Emergency Bugfixing

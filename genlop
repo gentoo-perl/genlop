@@ -304,7 +304,7 @@ sub help () {
       colored("  -v   ", $COLORS{'green'}),
       "display genlop version and exit.\n\n",
       colored("  --date datestring1", $COLORS{'green'}), " [",
-      colored("datestring2", $COLORS{'green'}),
+      colored(" --date datestring2", $COLORS{'green'}),
       "]  only shows results between datestring1\n",
       "       and datestring2. datestring2 dafaults to \"now\" if not",
       " explicitly set.\n", "       (e.g. genlop --list --date 3 days ago)\n",
