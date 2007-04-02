@@ -23,6 +23,7 @@
 use POSIX;
 use Term::ANSIColor;
 use Date::Manip;
+use LWP::Simple;
 
 my $version  = "0.30.4";
 my @logfiles = ("/var/log/emerge.log");
@@ -37,7 +38,7 @@ my (
     $search_found,  $unmerge_found, $list_found,    $file_found,
     $time_found,    $help_found,    $current_found, $pretend_found,
     $version_found, $info_found,    $gmt_found,     $rsync_found,
-    $info_ok,       $info_target,   $ssearch_found
+    $info_ok,       $info_target,   $ssearch_found, $lhtomsg
 );
 # variabili globali del programma
 my ($e_start, $e_end, $search_string, $m_count, $ebuild_found);
@@ -219,8 +220,8 @@ sub parse ($) {
                 $search_found                = 1, last SSWITCH if ($opt eq "s");
                 $version_found               = 1, last SSWITCH if ($opt eq "v");
                 $info_found                  = 1, last SSWITCH if ($opt eq "i");
-                $ssearch_found               = 1, last SSWITCH
-                  if ($opt eq "S");
+				$online_query                = 1, last SSWITCH if ($opt eq "q");
+                $ssearch_found               = 1, last SSWITCH if ($opt eq "S");
                 $current_found = 1, last SSWITCH if ($opt eq "c");
                 $pretend_found = 1, last SSWITCH if ($opt eq "p");
                 $rsync_found   = 1, last SSWITCH if ($opt eq "r");
@@ -291,6 +292,8 @@ sub help () {
       colored("  -n   ", $COLORS{'green'}), "no color in output\n",
       colored("  -p   ", $COLORS{'green'}),
       "estimate build time from a piped \"emerge -p\" output\n",
+	  colored("  -q   ", $COLORS{'green'}),
+	  "query gentoo.linuxhowtos.org database if no local emerge was found\n",
       colored("  -r   ", $COLORS{'green'}),
       "search for portage tree sync/rsync history.\n",
       colored("  -s   ", $COLORS{'green'}),
@@ -419,6 +422,51 @@ sub gen_regexp ($) {
     return "$regexp";
 }
 
+# Submitted in bug 157103 by sascha to enable searching against linuxhowtos for compile
+# times when genlop has no data to work with
+sub lhtoquery($$)
+{
+	  my $vcpu=0,$pcpu=0,$opcpu=-1;
+	  my $modelname="";
+	  $packet=shift(@_);
+	  $countref=shift(@_);
+	  open(my $cmdline, "/proc/cpuinfo");
+	  while (<$cmdline>) {
+		    if (m/processor\s*:\s*(\d*)/)
+		    {
+			      $vcpu=$1 if ($1>$vcpu);
+			    }
+		    if (m/model name\s*:\s*(.*)$/)
+		    {
+			      $modelname=$1;
+			    }
+		    if (m/cache size\s*:\s*(.*)$/)
+		    {
+			      $cachesize=$1;
+			    }
+		    if (m/physical id\s*:\s*(\d*)$/)
+		    {
+			      $pcpu++ if ($1!=$opcpu);
+			      $opcpu=$1;
+			    }
+		  }
+	  $vcpu++;
+	  $pcpu=1 if ($pcpu==0);
+	  $cpuname=$pcpu."x $modelname $cachesize";
+	  $cpuname=~ s/ /%20/g;
+	  $retval=LWP::Simple::get("http://gentoo.linuxhowtos.org/query.php?cpuname=$cpuname&vcpu=$vcpu&packetname=$packet");
+	  if ($retval =~ m/estimate: (\d*) seconds/)
+	  {
+		    $$countref=1;
+		    return $1;
+		  }
+	  if ($retval =~ /unknown cpu/)
+	  {
+		    $lhtomsg="Your CPU is not yet known, please add it by following the instructions on http://gentoo.linuxhowtos.org/compiletimeestimator/";
+		  }
+	  return 0;
+	}
+
 # --pretend or -p takes an emerge -p `-e -D world, system`, anything you want
 # and elaborates its output. for each package is calculated the average build
 # time and summed together. this is the estimated merge time
@@ -453,6 +501,12 @@ sub pretend() {
                     }
                 }
             }
+			if ($e_count == 0) {
+				if ($online_query) {
+					#query gentoo.linuxhowtos.org
+					$tm_secondi+=lhtoquery($last_ebuild,\$e_count);
+				}
+			}
             if ($e_count == 0) {
                 $ebuild_arg =~ s/\\//g;
                 print "\n!!! Error: couldn't get previous ",
@@ -476,6 +530,11 @@ sub pretend() {
                   "estimated time unknown.";
                 print color 'reset';
                 print "\n";
+				if ($lhtomsg) {
+					print color 'bold yellow';
+					print "$lhtomsg\n";
+					print color 'reset';
+				}
                 exit;
             }
             print "\n\nEstimated update time: ";
@@ -560,6 +619,13 @@ sub current() {
         $current_found = 1;
         print "\n";
         print "       ETA: ";
+
+		if (!$e_count &&$online_query) {
+			#query gentoo.linuxhowtos.org
+			$tm_secondi=lhtoquery($ebuild_arg,\$e_count);
+			$e_count=1;
+		}
+
 
         if ($e_count && $e_start) {
             &gtime(($tm_secondi / $e_count) - ($e_end - $e_start));
@@ -837,9 +903,23 @@ foreach $ebuild_arg (@targets) {
         }
     }
     if (!$e_count and !$list_found and !$rsync_found) {
-        print color 'bold red';
-        print "!!! Error: no merge found for \'$ebuild_arg\'";
-        print color 'reset';
+		if ($e_count == 0) {
+			if ($online_query) {
+			    #query gentoo.linuxhowtos.org
+			    $tm_secondi+=lhtoquery($ebuild_arg,\$e_count);
+					   }
+				}
+		if ($e_count >0) {
+			            print "Estimated merge time: ";
+			            &gtime($tm_secondi);
+			            &print_gtime();
+				}
+			else
+			{
+			          print color 'bold red';
+			          print "!!! Error: no merge found for \'$ebuild_arg\'";
+			          print color 'reset';
+				}
         print "\n";
     } elsif ($info_found) {
         &info($info_target);
@@ -847,4 +927,12 @@ foreach $ebuild_arg (@targets) {
         $e_count = 0;
     }
 }
+
+if ($lhtomsg)
+{
+	   print color 'bold yellow';
+	   print "$lhtomsg\n";
+	   print color 'reset';
+}
+
 
