@@ -332,23 +332,24 @@ sub print_gtime() {
     if ($days > 0) {
         print colored("$days", $COLORS{'green'}), " day";
         print "s" if ($days > 1);
-        print ", ";
     }
     if ($hours > 0) {
+		print ", " if ($days > 0);
         print colored("$hours", $COLORS{'green'}), " hour";
         print "s" if ($hours > 1);
         print ", ";
     }
     if ($mins > 0) {
+		print ", " if ($days > 0 or $hours > 0);
         print colored("$mins", $COLORS{'green'}), " minute";
         print "s" if ($mins > 1);
-        print " and " if ($secs > 0 and !$pretend_found);
     }
-    if ($mins < 1 && $hours < 1 && $secs > 0 && $current_found) {
+	if ($mins < 1 && $hours < 1 && $days < 1 && $secs > 0 && $current_found) {
         print colored("less than a minute", $COLORS{'green'});
-    } elsif ($mins < 1 && $hours < 1 && $secs > 0 && $pretend_found) {
+	} elsif ($mins < 1 && $hours < 1 && $days < 1 && $secs > 0 && $pretend_found) {
         print colored("less than a minute", $COLORS{'green'});
     } elsif ($secs > 0 && !$pretend_found) {
+		print " and " if ($days > 0 or $hours > 0 or $mins > 0);
         print colored("$secs", $COLORS{'green'}), " second";
         print "s" if ($secs > 1);
     }
