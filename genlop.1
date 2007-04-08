@@ -9,7 +9,7 @@ logfile(s) for information.
 .IR logfile ]
 .RB [ \-\-date 
 .IR datespec ]
-.RB [ \-chiglnprstuv ]
+.RB [ \-chiglnpqrstuv ]
 .I "name" ...
 .br 
 .SH "DESCRIPTION"
@@ -80,6 +80,9 @@ lists complete merge history.
 \fB\-n \-\-nocolor\fR
 disables colored output.
 .TP 
+\fB\-q\fR
+query gentoo.linuxhowtos.org database if no local emerge was found
+.TP
 \fB\-r \-\-rsync\fR
 looks for portage rsync/sync history.
 .TP 
