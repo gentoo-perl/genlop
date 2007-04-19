@@ -917,25 +917,32 @@ sub info($)
     }
     if (!$info_ok) { print "   none installed.\n"; }
 }
-###
-# supporto iniziale per rsync/sync
-sub rsync()
-{
-	my $date;
-    if ($_ =~ m/^(.*?)\:  \=\=\= r?sync/g)
-    {
-        if ($gmt_found)
-        {
-            $date = scalar gmtime "$1";
-        }
-        else
-        {
-            $date = scalar localtime "$1";
-        }
-        print "     rsync'ed at >>> ";
-        print colored("$date\n", $COLORS{'green'});
-    }
-    print color 'reset';
+
+sub rsync() {
+	foreach my $this_logfile (@logfiles) {
+		my $handle;
+		open_file($this_logfile, \$handle);
+		if ($gmt_found) {
+			while(<$handle>) {
+				if ($_ =~ m/^(.*?)\: \=\=\= Sync completed with/) {
+					print "     rsync'ed at >>> ", colored((scalar gmtime "$1"), $COLORS{'green'}),"\n";
+				}
+			}
+		}
+		else {
+			while(<$handle>) {
+				if ($_ =~ m/^(.*?)\: \=\=\= Sync completed with/) {
+					print "     rsync'ed at >>> ", colored((scalar localtime "$1"), $COLORS{'green'}),"\n";
+#					print scalar localtime "$1",' >>> ',$2,"\n";
+				}
+			}
+		}
+		close($handle);
+	}
+	
+	print color 'reset';
+
+	return 0;
 }
 
 #######
@@ -979,6 +986,13 @@ if (scalar @logfiles > 1)
 {
     @logfiles = order_logs(@logfiles);
 }
+
+# - Option -r given? >
+if ($rsync_found) {
+	rsync();
+	exit(0);
+}
+
 foreach my $ebuild_arg (@targets)
 {
 
@@ -1004,7 +1018,6 @@ foreach my $ebuild_arg (@targets)
             }
             if ($pretend_found) { &pretend; }
             if ($current_found) { &current; }
-            if ($rsync_found)   { &rsync; }
             if ($time_found or $info_found)
             {
                 if ($_ =~ m/^([0-9]{10})\:  \>\>\> emerge .*?\) $pattern/)

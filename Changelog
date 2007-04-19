@@ -3,9 +3,16 @@
 genlop                  |  by Giorgio Mandolfo 
 Gentoo Linux log parser |  and Antonio Dolcetta
 
+genlop ?.??.? ??/??/????
+	. -r is about ~10 times faster now
+	. use different regexp when compiling sync history for better results
+	  (old one was also counting in aborted ones - genlop now agrees with
+	  qlop)
+
 genlop 0.30.7 09/04/2007
 	. bug noted on dev mailing list - too many commas in time display for
 	estimates.
+
 genlop 0.30.6 02/04/2007
 	. bug 119518, fixed "unary operator expected" error, thanks stuart.
 	. bug 120405, patch from bensberg for appropriate display of seconds
