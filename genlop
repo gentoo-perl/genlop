@@ -919,21 +919,22 @@ sub info($)
 }
 
 sub rsync() {
-	foreach my $this_logfile (@logfiles) {
+	foreach (@logfiles) {
 		my $handle;
-		open_file($this_logfile, \$handle);
-		if ($gmt_found) {
-			while(<$handle>) {
-				if ($_ =~ m/^(.*?)\: \=\=\= Sync completed with/) {
+		open_file($_, \$handle);
+		while(<$handle>) {
+			if ($_ =~ m/^(.*?)\: \=\=\= Sync completed with/) {
+				if ($date_found) {
+					if (datecompare($1) <= 0) {
+						next;
+					}
+				}
+
+				if ($gmt_found) {
 					print "     rsync'ed at >>> ", colored((scalar gmtime "$1"), $COLORS{'green'}),"\n";
 				}
-			}
-		}
-		else {
-			while(<$handle>) {
-				if ($_ =~ m/^(.*?)\: \=\=\= Sync completed with/) {
+				else {
 					print "     rsync'ed at >>> ", colored((scalar localtime "$1"), $COLORS{'green'}),"\n";
-#					print scalar localtime "$1",' >>> ',$2,"\n";
 				}
 			}
 		}
