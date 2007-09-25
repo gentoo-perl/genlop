@@ -3,7 +3,8 @@
 genlop                  |  by Giorgio Mandolfo 
 Gentoo Linux log parser |  and Antonio Dolcetta
 
-genlop ?.??.? ??/??/????
+genlop 0.30.8 09/25/2007
+	. Remove use of GNU/Linux-specific ps options and /proc for -c option. Bug 172839
 	. -r is about ~10 times faster now
 	. use different regexp when compiling sync history for better results
 	  (old one was also counting in aborted ones - genlop now agrees with
