@@ -665,29 +665,23 @@ sub current()
     # sometimes enough to miss all the sandbox action completely. Better to
     # not check for sanity and have users check their FEATURES instead.
     my @targets      = ();
-    my @sandbox_pids = qx{ps --no-header -o pid -C sandbox};
+    my @sandbox_pids = ();
+    my @sandbox_procs = qx{ps ax -o pid,args | tail -n +2 | sed -e's/^ *//' | grep ' sandbox ' | grep -v ' grep '};
     my ($e_curmerge, $e_lastmerge);
+    foreach (@sandbox_procs)
+    {
+        if (m/^(.*?) \[(.*?)\-[0-9].*?\]/)
+        {
+            push @sandbox_pids, $1;
+            push @targets, $2;
+        }
+    }
     if (scalar @sandbox_pids == 0)
     {
         print colored("!!!", $COLORS{'red'});
         print " Error: no working merge found.\n";
         print "(the -c option only works if there is" . " an ongoing compilation, see manpage)\n";
         exit;
-    }
-    foreach my $pid (@sandbox_pids)
-    {
-		my $current;
-        chomp $pid;
-        $pid =~ s/\s//g;
-        open(my $cmdline, "/proc/$pid/cmdline");
-        while (<$cmdline>)
-        {
-            if ($_ =~ m/^\[(.*?)\-[0-9].*?\]/g)
-            {
-                $current = $1;
-            }
-        }
-        push @targets, $current;
     }
     if (scalar @targets == 0)
     {
