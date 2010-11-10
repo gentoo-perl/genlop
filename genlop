@@ -29,7 +29,7 @@ use Date::Manip;
 use LWP::Simple;
 use File::Basename;
 
-my $version  = "0.30.7";
+my $version  = "0.30.8";
 my @logfiles = ("/var/log/emerge.log");
 my %COLORS   = (
 	'blue'  => 'bold blue',
