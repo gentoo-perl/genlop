@@ -1157,7 +1157,15 @@ foreach my $ebuild_arg (@targets)
 				$pattern = gen_regexp($ebuild_arg);
 				if (m/^([0-9]{10})\:  \>\>\> unmerge success: ($pattern.*)/g)
 				{
-					my $u_date = scalar localtime "$1";
+					my $u_date;
+					if ($gmt_found)
+					{
+						$u_date = scalar gmtime "$1";
+					}
+					else
+					{
+						$u_date = scalar localtime "$1";
+					}
 					if ($unmerge_found)
 					{
 						print "     $u_date <<<", colored(" $2\n", $COLORS{'red'});
