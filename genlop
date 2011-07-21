@@ -352,8 +352,8 @@ $Options
   -e  display package history; default if any option is used.
   -f  read emerge log information from "logfile" instead of "$logfiles[0]"
   -h  print this help
-  -i  extra infos for the selected package (build specific USE and CFLAGS
-      variables, average build time, etc)
+  -i  extra infos for the selected package (build specific USE, CFLAGS,
+      CXXFLAGS and LDFLAGS variables, average build time, etc)
   -g  display GMT/UTC, not localized time.
   -l  show full merge history.
   -n  no color in output
@@ -922,13 +922,30 @@ sub info($)
 					}
 					print "\"\n";
 
-					# easy work here: we simply print the CFLAGS file
+					# easy work here: we simply print the CFLAGS, CXXFLAGS, and LDFLAGS files
 					print "   CFLAGS=\"";
-					open(pkg_cflag, "$db_pkg_dir/CFLAGS");
-					while (<pkg_cflag>)
-					{
-						chomp();
-						print();
+					if (open(pkg_cflag, "$db_pkg_dir/CFLAGS")) {
+						while (<pkg_cflag>)
+						{
+							chomp();
+							print();
+						}
+					}
+					print "   CXXFLAGS=\"";
+					if (open(pkg_cxxflag, "$db_pkg_dir/CXXFLAGS")) {
+						while (<pkg_cxxflag>)
+						{
+							chomp();
+							print();
+						}
+					}
+					print "   LDFLAGS=\"";
+					if (open(pkg_ldflag, "$db_pkg_dir/LDFLAGS")) {
+						while (<pkg_ldflag>)
+						{
+							chomp();
+							print();
+						}
 					}
 					print "\"\n";
 				}
