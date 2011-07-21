@@ -298,8 +298,7 @@ sub parse ($)
 					if (!-r $ARGV[0])
 					{
 						print color 'bold red';
-						print "!!! Error: logfile " . $ARGV[0]
-							. " not readable ", "or not found.";
+						print "!!! Error: logfile $ARGV[0] not readable or not found.";
 						print color 'reset';
 						print "\n";
 						exit -1;
@@ -450,7 +449,7 @@ sub gen_regexp ($)
 	my $regexp;
 	my @list;
 
-	if ($list_found)
+	if ($list_found or $unmerge_found)
 	{
 		if ($arg =~ m{^=})
 		{
@@ -977,7 +976,7 @@ sub rsync() {
 		}
 		close($handle);
 	}
-	
+
 	print color 'reset';
 
 	return 0;
@@ -1009,6 +1008,7 @@ VERSION
 
 if (    !$targets[0]
 	and !$list_found
+	and !$unmerge_found
 	and !$current_found
 	and !$pretend_found
 	and !$rsync_found)
@@ -1019,6 +1019,7 @@ if (    !$targets[0]
 # FIXME questi a cosa servono ?
 if ($rsync_found)   { @targets = (); push @targets, "-r"; }
 if ($list_found)    { @targets = (); push @targets, "-l"; }
+if ($unmerge_found) { @targets = (); push @targets, "-u"; }
 if ($pretend_found) { @targets = (); push @targets, "-p"; }
 if ($current_found) { @targets = (); push @targets, "-c"; }
 
@@ -1094,25 +1095,39 @@ foreach my $ebuild_arg (@targets)
 				}
 				if (!$e_count)
 				{
+					# TODO: this bunch of repeated code can be refactored.
 					my $p_ebuild = " \* $2\n\n";
 					$p_ebuild =~ s/\\//g;
-					if (!$search_found)
+					if ($search_found)
+					{
+						print colored(" \* matches found:\n\n", $COLORS{'blue'});
+					}
+					elsif ($list_found && $unmerge_found)
+					{
+						print colored(" \* packages merged and unmerged:\n\n", 
+							$COLORS{'blue'});
+					}
+					elsif ($list_found)
+					{
+						print colored(" \* packages merged:\n\n", $COLORS{'blue'});
+					}
+					elsif ($unmerge_found)
+					{
+						print colored(" \* packages unmerged:\n\n", $COLORS{'blue'});
+					}
+					else
 					{
 						if ($ebuild_arg =~ m/\/$/)
 						{
-							print colored("\* $ebuild_arg\n\n", $COLORS{'blue'});
+							print colored(" \* $ebuild_arg\n\n", $COLORS{'blue'});
 						}
 						else
 						{
 							print colored("$p_ebuild", $COLORS{'blue'});
 						}
 					}
-					else
-					{
-						print colored(" \* matches found:\n\n", $COLORS{'blue'});
-					}
 				}
-				if ($ebuild_found or !$info_found or $time_found)
+				if ($list_found or $ebuild_found or $time_found)
 				{
 					my $eb = $2;
 					my $extra = $3 || "";
@@ -1151,7 +1166,7 @@ foreach my $ebuild_arg (@targets)
 			}
 		}
 	}
-	if (!$e_count and !$list_found and !$rsync_found)
+	unless ($e_count or $unmerge_found or $list_found or $rsync_found)
 	{
 		if ($e_count == 0)
 		{
@@ -1192,4 +1207,3 @@ if ($lhtomsg)
 	print "$lhtomsg\n";
 	print color 'reset';
 }
-
