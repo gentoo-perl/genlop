@@ -12,35 +12,37 @@
 #
 _genlop()
 {
-	local cur grepcmd sedcmd systemactions setsma setbig portagedir origdir
+	local cur grepcmd sedcmd systemactions setsma setbig portagedir origdir args
 
 	origdir="${PWD}"
 	COMPREPLY=()
-		portagedir="$( (source /etc/make.globals
-		                source /etc/make.conf
-		                echo ${PORTDIR}) )"
-	if [ -z "${portagedir}" ]; then
-	portagedir=/usr/portage
+	portagedir="$( (source /etc/make.globals
+	                source /etc/make.conf
+	                echo ${PORTDIR}) )"
+	if [[ -z "${portagedir}" ]]; then
+	    portagedir="/usr/portage"
 	fi
 	cur="${COMP_WORDS[COMP_CWORD]}"
 
-	cd "${portagedir}"
+	builtin cd "${portagedir}"
 	grepcmd="grep -E ^${cur}.*"
 	sedcmd="sed -e /^[^-]*$/d"
-	case "$cur" in
+	case "${cur}" in
 		-*)
-			COMPREPLY=( $( compgen -W '--current --file --help \
-			--info --gmt --list --nocolor --pretend --rsync \
-			--search --time --unmerge --version' -- $cur ) )
+			args='-c -e -f -h -i -g -l -n -p -r -s -S -t -u -v'
+			args="${args} --current --date --file --gmt --help \
+				--info --list --nocolor --pretend --rsync \
+				--search --time --unmerge --version"
+			COMPREPLY=( $( compgen -W "${args}" -- ${cur} ) )
 			;;
 		*)
-			if [ "${cur}" ]; then
-				if [ $(echo "${cur}" | grep '/') ]; then
+			if [[ "${cur}" ]]; then
+				if [[ $(echo "${cur}" | grep '/') ]]; then
 					setbig=$(compgen -G "${cur}*" | ${sedcmd})"${systemactions}"
-					COMPREPLY=($(echo "${setbig}" | $grepcmd))
+					COMPREPLY=($(echo "${setbig}" | ${grepcmd}))
 				else
 					setsma=$(compgen -S '/' -G "${cur}*" | ${sedcmd})"${systemactions}"
-					if [ $(echo "${setsma}" | ${grepcmd} | grep '/' | wc -l) = 1 ]; then
+					if [[ $(echo "${setsma}" | ${grepcmd} | grep '/' | wc -l) == 1 ]]; then
 						setbig=$(compgen -G "*/*" | ${sedcmd})"${systemactions}"
 						COMPREPLY=($(echo "${setbig}" | ${grepcmd}))
 					else
@@ -54,7 +56,7 @@ _genlop()
 			;;
 	esac
 
-	cd "${origdir}"
+	builtin cd "${origdir}"
 	return 0
 }
 complete -o default -F _genlop genlop
