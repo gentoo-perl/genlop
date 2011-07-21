@@ -1,5 +1,5 @@
 # -*- shell-script -*-
-# If you have bash completion installed and want genlop to auto-complete 
+# If you have bash completion installed and want genlop to auto-complete
 # packages, save this file as /etc/bash_completion.d/genlop
 #
 # Copyright 1999-2002 Gentoo Technologies, Inc.
@@ -12,21 +12,21 @@
 #
 _genlop()
 {
-        local cur grepcmd sedcmd systemactions setsma setbig portagedir origdir
-                                                                                                                                                
-        origdir="${PWD}"
+	local cur grepcmd sedcmd systemactions setsma setbig portagedir origdir
+
+	origdir="${PWD}"
 	COMPREPLY=()
-		  portagedir="$( (source /etc/make.globals
-		  		source /etc/make.conf
-				echo ${PORTDIR}) )"
-        if [ -z "${portagedir}" ]; then
-            portagedir=/usr/portage
-        fi
-        cur="${COMP_WORDS[COMP_CWORD]}"
-                                                                                                                                                
-        cd "${portagedir}"
-        grepcmd="grep -E ^${cur}.*"
-        sedcmd="sed -e /^[^-]*$/d"
+		portagedir="$( (source /etc/make.globals
+		                source /etc/make.conf
+		                echo ${PORTDIR}) )"
+	if [ -z "${portagedir}" ]; then
+	portagedir=/usr/portage
+	fi
+	cur="${COMP_WORDS[COMP_CWORD]}"
+
+	cd "${portagedir}"
+	grepcmd="grep -E ^${cur}.*"
+	sedcmd="sed -e /^[^-]*$/d"
 	case "$cur" in
 		-*)
 			COMPREPLY=( $( compgen -W '--current --file --help \
@@ -34,27 +34,27 @@ _genlop()
 			--search --time --unmerge --version' -- $cur ) )
 			;;
 		*)
-		        if [ "${cur}" ]; then
-                		if [ $(echo "${cur}" | grep '/') ]; then
-		                        setbig=$(compgen -G "${cur}*" | ${sedcmd})"${systemactions}"
-                		        COMPREPLY=($(echo "${setbig}" | $grepcmd))
-		                else
-                		        setsma=$(compgen -S '/' -G "${cur}*" | ${sedcmd})"${systemactions}"
-		                        if [ $(echo "${setsma}" | ${grepcmd} | grep '/' | wc -l) = 1 ]; then
-                		                setbig=$(compgen -G "*/*" | ${sedcmd})"${systemactions}"
-		                                COMPREPLY=($(echo "${setbig}" | ${grepcmd}))
-                		        else
-		                                COMPREPLY=($(echo "${setsma}" | ${grepcmd}))
-                		        fi
-		                fi
-		        else
-                		setsma=$(compgen -S '/' -G "${cur}*" | ${sedcmd})"${systemactions}"
-		                COMPREPLY=($(echo "${setsma}"))
-		        fi
+			if [ "${cur}" ]; then
+				if [ $(echo "${cur}" | grep '/') ]; then
+					setbig=$(compgen -G "${cur}*" | ${sedcmd})"${systemactions}"
+					COMPREPLY=($(echo "${setbig}" | $grepcmd))
+				else
+					setsma=$(compgen -S '/' -G "${cur}*" | ${sedcmd})"${systemactions}"
+					if [ $(echo "${setsma}" | ${grepcmd} | grep '/' | wc -l) = 1 ]; then
+						setbig=$(compgen -G "*/*" | ${sedcmd})"${systemactions}"
+						COMPREPLY=($(echo "${setbig}" | ${grepcmd}))
+					else
+						COMPREPLY=($(echo "${setsma}" | ${grepcmd}))
+					fi
+				fi
+			else
+				setsma=$(compgen -S '/' -G "${cur}*" | ${sedcmd})"${systemactions}"
+				COMPREPLY=($(echo "${setsma}"))
+			fi
 			;;
 	esac
-	
-        cd "${origdir}"
-        return 0
+
+	cd "${origdir}"
+	return 0
 }
 complete -o default -F _genlop genlop
