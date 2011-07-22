@@ -298,8 +298,7 @@ sub parse ($)
 					if (!-r $ARGV[0])
 					{
 						print color 'bold red';
-						print "!!! Error: logfile " . $ARGV[0]
-							. " not readable ", "or not found.";
+						print "!!! Error: logfile $ARGV[0] not readable or not found.";
 						print color 'reset';
 						print "\n";
 						exit -1;
@@ -352,8 +351,8 @@ $Options
   -e  display package history; default if any option is used.
   -f  read emerge log information from "logfile" instead of "$logfiles[0]"
   -h  print this help
-  -i  extra infos for the selected package (build specific USE and CFLAGS
-      variables, average build time, etc)
+  -i  extra infos for the selected package (build specific USE, CFLAGS,
+      CXXFLAGS and LDFLAGS variables, average build time, etc)
   -g  display GMT/UTC, not localized time.
   -l  show full merge history.
   -n  no color in output
@@ -450,7 +449,7 @@ sub gen_regexp ($)
 	my $regexp;
 	my @list;
 
-	if ($list_found)
+	if ($list_found or $unmerge_found)
 	{
 		if ($arg =~ m{^=})
 		{
@@ -922,13 +921,30 @@ sub info($)
 					}
 					print "\"\n";
 
-					# easy work here: we simply print the CFLAGS file
+					# easy work here: we simply print the CFLAGS, CXXFLAGS, and LDFLAGS files
 					print "   CFLAGS=\"";
-					open(pkg_cflag, "$db_pkg_dir/CFLAGS");
-					while (<pkg_cflag>)
-					{
-						chomp();
-						print();
+					if (open(pkg_cflag, "$db_pkg_dir/CFLAGS")) {
+						while (<pkg_cflag>)
+						{
+							chomp();
+							print();
+						}
+					}
+					print "   CXXFLAGS=\"";
+					if (open(pkg_cxxflag, "$db_pkg_dir/CXXFLAGS")) {
+						while (<pkg_cxxflag>)
+						{
+							chomp();
+							print();
+						}
+					}
+					print "   LDFLAGS=\"";
+					if (open(pkg_ldflag, "$db_pkg_dir/LDFLAGS")) {
+						while (<pkg_ldflag>)
+						{
+							chomp();
+							print();
+						}
 					}
 					print "\"\n";
 				}
@@ -960,7 +976,7 @@ sub rsync() {
 		}
 		close($handle);
 	}
-	
+
 	print color 'reset';
 
 	return 0;
@@ -992,6 +1008,7 @@ VERSION
 
 if (    !$targets[0]
 	and !$list_found
+	and !$unmerge_found
 	and !$current_found
 	and !$pretend_found
 	and !$rsync_found)
@@ -1002,6 +1019,7 @@ if (    !$targets[0]
 # FIXME questi a cosa servono ?
 if ($rsync_found)   { @targets = (); push @targets, "-r"; }
 if ($list_found)    { @targets = (); push @targets, "-l"; }
+if ($unmerge_found) { @targets = (); push @targets, "-u"; }
 if ($pretend_found) { @targets = (); push @targets, "-p"; }
 if ($current_found) { @targets = (); push @targets, "-c"; }
 
@@ -1077,25 +1095,39 @@ foreach my $ebuild_arg (@targets)
 				}
 				if (!$e_count)
 				{
+					# TODO: this bunch of repeated code can be refactored.
 					my $p_ebuild = " \* $2\n\n";
 					$p_ebuild =~ s/\\//g;
-					if (!$search_found)
+					if ($search_found)
+					{
+						print colored(" \* matches found:\n\n", $COLORS{'blue'});
+					}
+					elsif ($list_found && $unmerge_found)
+					{
+						print colored(" \* packages merged and unmerged:\n\n", 
+							$COLORS{'blue'});
+					}
+					elsif ($list_found)
+					{
+						print colored(" \* packages merged:\n\n", $COLORS{'blue'});
+					}
+					elsif ($unmerge_found)
+					{
+						print colored(" \* packages unmerged:\n\n", $COLORS{'blue'});
+					}
+					else
 					{
 						if ($ebuild_arg =~ m/\/$/)
 						{
-							print colored("\* $ebuild_arg\n\n", $COLORS{'blue'});
+							print colored(" \* $ebuild_arg\n\n", $COLORS{'blue'});
 						}
 						else
 						{
 							print colored("$p_ebuild", $COLORS{'blue'});
 						}
 					}
-					else
-					{
-						print colored(" \* matches found:\n\n", $COLORS{'blue'});
-					}
 				}
-				if ($ebuild_found or !$info_found or $time_found)
+				if ($list_found or $ebuild_found or $time_found)
 				{
 					my $eb = $2;
 					my $extra = $3 || "";
@@ -1125,7 +1157,15 @@ foreach my $ebuild_arg (@targets)
 				$pattern = gen_regexp($ebuild_arg);
 				if (m/^([0-9]{10})\:  \>\>\> unmerge success: ($pattern.*)/g)
 				{
-					my $u_date = scalar localtime "$1";
+					my $u_date;
+					if ($gmt_found)
+					{
+						$u_date = scalar gmtime "$1";
+					}
+					else
+					{
+						$u_date = scalar localtime "$1";
+					}
 					if ($unmerge_found)
 					{
 						print "     $u_date <<<", colored(" $2\n", $COLORS{'red'});
@@ -1134,7 +1174,7 @@ foreach my $ebuild_arg (@targets)
 			}
 		}
 	}
-	if (!$e_count and !$list_found and !$rsync_found)
+	unless ($e_count or $unmerge_found or $list_found or $rsync_found)
 	{
 		if ($e_count == 0)
 		{
@@ -1175,4 +1215,3 @@ if ($lhtomsg)
 	print "$lhtomsg\n";
 	print color 'reset';
 }
-

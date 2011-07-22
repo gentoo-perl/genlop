@@ -30,7 +30,7 @@ Detailed features include:
  \- Compressed logfiles (gzip, bzip2) are supported
  \- Match ebuild names using regular expressions.
  \- Log corruption detection.
- \- Display build specific USE and CFLAGS variables.
+ \- Display build specific USE, CFLAGS, CXXFLAGS, and LDFLAGS variables.
  \- GMT/UTC or localized time and date.
  \- Full portage rsync history.
 .SH "SYNTAX"
@@ -72,7 +72,7 @@ display time in GMT/UTC format (default is local time)
 output help information.
 .TP 
 \fB\-i \-\-info\fR
-prints a brief summary; this includes USE and CFLAGS for the currently installed ebuilds, average and total build time.
+prints a brief summary; this includes USE, CFLAGS, CXXFLAGS, and LDFLAGS for the currently installed ebuilds, average and total build time.
 .TP 
 \fB\-l \-\-list\fR
 lists complete merge history.
@@ -129,13 +129,13 @@ To view how long merging openoffice took
 .br 
 genlop \-t openoffice
 .LP 
-To estimate how much 'emerge \-uU world' will take
+To estimate how much 'emerge \-u world' will take
 .br 
-emerge \-pU world | genlop \-\-pretend
+emerge \-pu world | genlop \-\-pretend
 .LP 
 Have a console watching the latest merging ebuild during upgrade
 .br 
-watch genlop \-\-current
+watch genlop \-\-current \-\-nocolor
 .LP 
 For use in terminals that do not support ANSI
 .br 
