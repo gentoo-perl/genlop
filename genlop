@@ -29,7 +29,7 @@ use Date::Manip;
 use LWP::Simple;
 use File::Basename;
 
-my $version  = "0.30.8";
+my $version  = "0.30.9";
 my @logfiles = ("/var/log/emerge.log");
 my %COLORS   = (
 	'blue'  => 'bold blue',
@@ -604,7 +604,7 @@ sub pretend()
 			{
 				my $handle;
 				open_file($logfile, \$handle);
-				foreach (<$handle>)
+				while (<$handle>)
 				{
 					if (m/^(.*?)\:  \>\>\> emerge.*?\/$ebuild_arg-[0-9].*/)
 					{
@@ -723,7 +723,7 @@ sub current()
 		{
 			my $handle;
 			open_file($logfile, \$handle);
-			foreach (<$handle>)
+			while (<$handle>)
 			{
 				if (m/^(.*?)\:  \>\>\> emerge \((.*?) of (.*?)\)(.*?\/$ebuild_arg-[0-9].*?)to \//)
 				{
@@ -839,14 +839,14 @@ sub info($)
 					print colored("\n   * $categoria/$package_dir\n", $COLORS{'blue'});
 					$package_dir =~ s/(\+)/\\$1/g;
 
+					my $pattern = gen_regexp("$categoria/$package_dir");
 					my $e_date;
 					foreach my $logfile (@logfiles)
 					{
 						my $handle;
 						open_file($logfile, \$handle);
-						foreach (<$handle>)
+						while (<$handle>)
 						{
-							my $pattern = gen_regexp("$categoria/$package_dir");
 							if (m/^([0-9]{10})\:  ::: completed .*?\) $pattern to \//)
 							{
 								if ($gmt_found)
@@ -1041,14 +1041,14 @@ foreach my $ebuild_arg (@targets)
 
 	# this is for packages like gtk+
 	$ebuild_arg =~ s/(\+)/\\$1/g;
+	my $pattern = gen_regexp($ebuild_arg);
 
 	foreach my $logfile (@logfiles)
 	{
 		my $handle;
 		open_file($logfile, \$handle);
-		foreach (<$handle>)
+		while (<$handle>)
 		{
-			my $pattern = gen_regexp($ebuild_arg);
 			if ($date_found)
 			{
 				if ($_ =~ m/^([0-9]{10})\:/)
@@ -1154,7 +1154,6 @@ foreach my $ebuild_arg (@targets)
 			}
 			if ($unmerge_found or $info_found)
 			{
-				$pattern = gen_regexp($ebuild_arg);
 				if (m/^([0-9]{10})\:  \>\>\> unmerge success: ($pattern.*)/g)
 				{
 					my $u_date;

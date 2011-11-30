@@ -3,6 +3,9 @@
 genlop                  |  by Giorgio Mandolfo 
 Gentoo Linux log parser |  and Antonio Dolcetta
 
+genlop 0.30.9 09/18/2011
+	. General performance optimizations
+
 genlop 0.30.8 09/25/2007
 	. Remove use of GNU/Linux-specific ps options and /proc for -c option. Bug 172839
 	. -r is about ~10 times faster now
