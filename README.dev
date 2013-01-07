@@ -1,0 +1,16 @@
+Creating a release:
+==================
+
+Note: We are using the version number 0.30.9 simply as an example.
+
+- Create a release distribution
+./create-release.sh 0.30.9
+Transfer ./genlop-0.30.9.tar.gz to dev.gentoo.org:/space/distfiles-local
+
+- Clean up any extraneous files
+git status
+rm or mv any untracked files/directories
+
+- Create a tag for the release
+git tag genlop-0.30.9
+git push origin genlop-0.30.9
