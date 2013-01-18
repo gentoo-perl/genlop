@@ -11,7 +11,7 @@ fi
 echo "Creating genlop-${version}.tar.gz ..."
 mkdir genlop-${version}
 cp -p COPYING  Changelog  README  genlop  genlop.1  genlop.bash-completion genlop-${version}
-sed -i "s/version  = \"9999\"/ersion  = \"${version}\"/" genlop-${version}/genlop
+sed -i "s/version  = \"9999\"/version  = \"${version}\"/" genlop-${version}/genlop
 tar cvzf genlop-${version}.tar.gz genlop-${version}
 rm -rf genlop-${version}
 exit 0
