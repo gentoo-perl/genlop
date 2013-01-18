@@ -995,7 +995,7 @@ help() if ($help_found);
 if ($version_found)
 {
 	print <<VERSION;
-genlop $version, maintained by Michael Cummings <mcummings\@gentoo.org>
+genlop $version
 original code by Giorgio Mandolfo and Antonio Dolcetta
 
 Please file any bugs found online at:
