@@ -1127,7 +1127,7 @@ foreach my $ebuild_arg (@targets)
 						}
 					}
 				}
-				if ($list_found or $ebuild_found or $time_found)
+				if ($list_found or $ebuild_found or $time_found or !$info_found)
 				{
 					my $eb = $2;
 					my $extra = $3 || "";
