@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 #
 # $Id: genlop,v 1.21 2005/08/16 23:50:32 antonio Exp $
 #
@@ -62,7 +62,8 @@ my (
 	$hours,
 	$days,
 	$lhtomsg,
-	$last_skipped
+	$last_skipped,
+	$eprefix
 );
 
 # variabili globali del programma
@@ -74,6 +75,12 @@ my @targets;
 my $progname = basename($0);
 
 my ($userdate1, $userdate2, $searchdate1, $searchdate2);
+
+sub get_eprefix() {
+	$eprefix = qx{portageq envvar EPREFIX};
+	die "Couldn't determine EPREFIX from Portage" if $? != 0;
+	chomp($eprefix);
+}
 
 sub datecompare ($) 
 {
@@ -109,7 +116,7 @@ sub datecompare ($)
 sub open_file
 {
 	my ($file, $fh) = @_;
-	if ($file eq "/var/log/emerge.log" && !-r $file)
+	if ($file eq "$eprefix/var/log/emerge.log" && !-r $file)
 	{
 		print "$progname: cannot open " . $file . " for reading\n"
 			. "maybe you are not a member of the portage group ?\n"
@@ -823,12 +830,12 @@ sub info($)
 	}
 	$e_count = 0;
 	print "\n   Info about currently installed ebuild:\n";
-	opendir(DIR, "/var/db/pkg/") || die "can't open /var/db/pkg/ $!\n";
+	opendir(DIR, "$eprefix/var/db/pkg/") || die "can't open $eprefix/var/db/pkg/ $!\n";
 	while (defined(my $categoria = readdir(DIR)))
 	{
 		if ($package =~ m/^$categoria.*/g)
 		{
-			opendir(DIR2, "/var/db/pkg/$categoria");
+			opendir(DIR2, "$eprefix/var/db/pkg/$categoria");
 			while (defined(my $package_dir = readdir(DIR2)))
 			{
 
@@ -872,7 +879,7 @@ sub info($)
 					my (@potential_use, @pkg_use, @used_use, @unused_use);
 
 					# each installed package store its information here
-					my $db_pkg_dir = "/var/db/pkg/$categoria/$package_dir/";
+					my $db_pkg_dir = "$eprefix/var/db/pkg/$categoria/$package_dir/";
 					if ("$categoria/$package_dir" =~ m/.*\/(.*)/g)
 					{
 
@@ -988,6 +995,7 @@ sub rsync() {
 # *Start*
 #######
 
+get_eprefix;
 help() if (!$ARGV[0]);
 
 # parse arguments
@@ -1034,11 +1042,11 @@ if (scalar @logfiles == 0)
 	if ($file_found)
 	{
 		print color "bold yellow";
-		print "!!! Warning: No readable log files found, using /var/log/emerge.log";
+		print "!!! Warning: No readable log files found, using $eprefix/var/log/emerge.log";
 		print color 'reset';
 		print "\n";
 	}
-	push @logfiles, '/var/log/emerge.log';
+	push @logfiles, "$eprefix/var/log/emerge.log";
 }
 
 if (scalar @logfiles > 1)
