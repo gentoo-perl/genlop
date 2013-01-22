@@ -30,7 +30,7 @@ use LWP::Simple;
 use File::Basename;
 
 my $version  = "9999";
-my @logfiles = ("/var/log/emerge.log");
+my @logfiles = ();
 my %COLORS   = (
 	'blue'  => 'bold blue',
 	'green' => 'bold green',
@@ -157,7 +157,15 @@ sub order_logs (@)
 		my $handle;
 		open_file("$logfile", \$handle);
 		my $fline = <$handle>;    # first line
-		$ordered{$logfile} = (split /:/, $fline)[0];
+		# Fix "Use of uninitialized value" if nothing is read
+		if ($fline)
+		{
+			$ordered{$logfile} = (split /:/, $fline)[0];
+		}
+		else
+		{
+			$ordered{$logfile} = 0;
+		}
 	}
 	return sort { $ordered{$a} <=> $ordered{$b} } keys %ordered;
 }
@@ -295,24 +303,18 @@ sub parse ($)
 						print "\n";
 						exit -1;
 					}
+					$file_found = 1;
 					if (!-r $ARGV[0])
 					{
-						print color 'bold red';
-						print "!!! Error: logfile $ARGV[0] not readable or not found.";
+						print color 'bold yellow';
+						print "!!! Warning: logfile $ARGV[0] not readable or not found.";
 						print color 'reset';
 						print "\n";
-						exit -1;
+						shift @ARGV;
+						last SSWITCH;
 					}
 					print "using logfile " . $ARGV[0] . "\n";
-					if (!$file_found)
-					{
-						$logfiles[0] = shift @ARGV;
-						$file_found = 1;
-					}
-					else
-					{
-						push @logfiles, shift(@ARGV);
-					}
+					push @logfiles, shift(@ARGV);
 					last SSWITCH;
 				}
 				$nexist = $opt;
@@ -1025,6 +1027,20 @@ if ($current_found) { @targets = (); push @targets, "-c"; }
 
 # main code...
 #cache_files(\@logfiles, \@logfile_cache);
+
+# Add /var/log/emerge.log if no log file(s) specified on command line
+if (scalar @logfiles == 0)
+{
+	if ($file_found)
+	{
+		print color "bold yellow";
+		print "!!! Warning: No readable log files found, using /var/log/emerge.log";
+		print color 'reset';
+		print "\n";
+	}
+	push @logfiles, '/var/log/emerge.log';
+}
+
 if (scalar @logfiles > 1)
 {
 	@logfiles = order_logs(@logfiles);
