@@ -939,7 +939,7 @@ sub info($)
 							print();
 						}
 					}
-					print "   CXXFLAGS=\"";
+					print "\"   CXXFLAGS=\"";
 					if (open(pkg_cxxflag, "$db_pkg_dir/CXXFLAGS")) {
 						while (<pkg_cxxflag>)
 						{
@@ -947,7 +947,7 @@ sub info($)
 							print();
 						}
 					}
-					print "   LDFLAGS=\"";
+					print "\"   LDFLAGS=\"";
 					if (open(pkg_ldflag, "$db_pkg_dir/LDFLAGS")) {
 						while (<pkg_ldflag>)
 						{
