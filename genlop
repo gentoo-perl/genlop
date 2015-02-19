@@ -968,7 +968,7 @@ sub rsync() {
 		my $handle;
 		open_file($_, \$handle);
 		while(<$handle>) {
-			if ($_ =~ m/^(.*?)\: \=\=\= Sync completed with/) {
+			if ($_ =~ m/^(.*?)\: \=\=\= Sync completed/) {
 				if ($date_found) {
 					if (datecompare($1) <= 0) {
 						next;
