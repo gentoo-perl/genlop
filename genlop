@@ -726,6 +726,8 @@ sub current()
 	foreach my $ebuild_arg (@targets)
 	{
 		my $e_current;
+		$e_count = 0;
+		$tm_secondi = 0;
 		$ebuild_arg =~ s/(\+)/\\$1/g;
 		$ebuild_arg =~ s/.*\///g;
 		foreach my $logfile (@logfiles)
