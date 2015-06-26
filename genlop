@@ -63,7 +63,8 @@ my (
 	$days,
 	$lhtomsg,
 	$last_skipped,
-	$eprefix
+	$eprefix,
+	$log_dir
 );
 
 # variabili globali del programma
@@ -80,6 +81,12 @@ sub get_eprefix() {
 	$eprefix = qx{portageq envvar EPREFIX};
 	die "Couldn't determine EPREFIX from Portage" if $? != 0;
 	chomp($eprefix);
+}
+
+sub get_logdir() {
+	$log_dir = qx{portageq envvar EMERGE_LOG_DIR};
+	chomp($log_dir);
+	$log_dir = '/var/log' if ($log_dir eq "");
 }
 
 sub datecompare ($) 
@@ -116,7 +123,7 @@ sub datecompare ($)
 sub open_file
 {
 	my ($file, $fh) = @_;
-	if ($file eq "$eprefix/var/log/emerge.log" && !-r $file)
+	if ($file eq "$eprefix$log_dir/emerge.log" && !-r $file)
 	{
 		print "$progname: cannot open " . $file . " for reading\n"
 			. "maybe you are not a member of the portage group ?\n"
@@ -1011,6 +1018,7 @@ sub rsync() {
 #######
 
 get_eprefix;
+get_logdir;
 help() if (!$ARGV[0]);
 
 # parse arguments
@@ -1051,17 +1059,17 @@ if ($current_found) { @targets = (); push @targets, "-c"; }
 # main code...
 #cache_files(\@logfiles, \@logfile_cache);
 
-# Add /var/log/emerge.log if no log file(s) specified on command line
+# Add $log_dir/emerge.log if no log file(s) specified on command line
 if (scalar @logfiles == 0)
 {
 	if ($file_found)
 	{
 		print color "bold yellow";
-		print "!!! Warning: No readable log files found, using $eprefix/var/log/emerge.log";
+		print "!!! Warning: No readable log files found, using $eprefix$log_dir/emerge.log";
 		print color 'reset';
 		print "\n";
 	}
-	push @logfiles, "$eprefix/var/log/emerge.log";
+	push @logfiles, "$eprefix$log_dir/emerge.log";
 }
 
 if (scalar @logfiles > 1)
