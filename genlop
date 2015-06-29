@@ -736,6 +736,7 @@ sub current()
 		$e_count = 0;
 		$tm_secondi = 0;
 		$ebuild_arg =~ s/(\+)/\\$1/g;
+		(my $cat = $ebuild_arg) =~ s/\/.*//g;
 		$ebuild_arg =~ s/.*\///g;
 		foreach my $logfile (@logfiles)
 		{
@@ -743,14 +744,14 @@ sub current()
 			open_file($logfile, \$handle);
 			while (<$handle>)
 			{
-				if (m/^(.*?)\:  \>\>\> emerge \((.*?) of (.*?)\)(.*?\/$ebuild_arg-[0-9].*?)to \//)
+				if (m/^(.*?)\:  \>\>\> emerge \((.*?) of (.*?)\)(.*?$cat\/$ebuild_arg-[0-9].*?)to \//)
 				{
 					$e_start     = $1;
 					$e_curmerge  = $2;
 					$e_lastmerge = $3;
 					$e_current   = $4;
 				}
-				if (m/^(.*?)\:  ::: completed .*?\) .*\/$ebuild_arg-[0-9].* to \//)
+				if (m/^(.*?)\:  ::: completed .*?\) .*$cat\/$ebuild_arg-[0-9].* to \//)
 				{
 					$e_end = $1;
 					$e_count++;
