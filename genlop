@@ -365,7 +365,7 @@ $Options
 
   -c  display the currently compiling packages (if any)
   -e  display package history; default if any option is used.
-  -f  read emerge log information from "logfile" instead of "$logfiles[0]"
+  -f  read emerge log information from "logfile" instead of "$eprefix$log_dir/emerge.log"
   -h  print this help
   -i  extra infos for the selected package (build specific USE, CFLAGS,
       CXXFLAGS and LDFLAGS variables, average build time, etc)
