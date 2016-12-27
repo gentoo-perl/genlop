@@ -69,6 +69,7 @@ my (
 
 # variabili globali del programma
 my ($e_start, $e_end, $search_string, $m_count, $ebuild_found);
+my $current_maxcount = 20;
 
 # variabili di datecompare
 my ($fh, $elog);
@@ -738,6 +739,7 @@ sub current()
 		$ebuild_arg =~ s/(\+)/\\$1/g;
 		(my $cat = $ebuild_arg) =~ s/\/.*//g;
 		$ebuild_arg =~ s/.*\///g;
+		my @merges;
 		foreach my $logfile (@logfiles)
 		{
 			my $handle;
@@ -754,11 +756,19 @@ sub current()
 				if (m/^(.*?)\:  ::: completed .*?\) .*$cat\/$ebuild_arg-[0-9].* to \//)
 				{
 					$e_end = $1;
-					$e_count++;
-					&gtime($e_end - $e_start);
-					$tm_secondi += ($e_end - $e_start);
+					push(@merges,{ start => $e_start, end => $e_end });
 				}
 			}
+		}
+		if ( @merges > $current_maxcount )
+		{
+			# Use only latest $current_maxcount emerges to calculate mean mergetime
+			splice(@merges,0,scalar(@merges)-$current_maxcount)
+		}
+		foreach my $merge ( @merges )
+		{
+			$e_count++;
+			$tm_secondi += ( $merge->{end} - $merge->{start} );
 		}
 		$e_end = CORE::time();
 		&gtime($e_end - $e_start);
