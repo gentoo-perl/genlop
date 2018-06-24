@@ -28,6 +28,7 @@ use Term::ANSIColor;
 use Date::Manip;
 use LWP::Simple;
 use File::Basename;
+use List::Util qw(min sum);
 
 my $version  = "9999";
 my @logfiles = ();
@@ -704,6 +705,7 @@ sub current()
 	# 20050815 - JeR: On slow systems, running portageq takes a lot of time,
 	# sometimes enough to miss all the sandbox action completely. Better to
 	# not check for sanity and have users check their FEATURES instead.
+	my @merge_times  = ();
 	my @targets      = ();
 	my @sandbox_pids = ();
 	my @sandbox_procs = qx{ps ax -o pid,args | tail -n +2 | sed -e's/^ *//' | grep ' sandbox ' | grep -v ' grep '};
@@ -757,6 +759,7 @@ sub current()
 					$e_count++;
 					&gtime($e_end - $e_start);
 					$tm_secondi += ($e_end - $e_start);
+					unshift(@merge_times, ($e_end - $e_start));
 				}
 			}
 		}
@@ -781,8 +784,24 @@ sub current()
 
 		if ($e_count && $e_start)
 		{
-			&gtime(($tm_secondi / $e_count) - ($e_end - $e_start));
-			if (($e_end - $e_start) >= ($tm_secondi / $e_count))
+			if ($e_count > 1)
+			{
+				# For a better prediction we only consider the last 10 merges
+				# to have a better bias to latest system changes.
+				my $num_elems = min(9, $#merge_times);
+				@merge_times = @merge_times[0..$num_elems];
+
+				# Now slice off the worst and best performing time to create
+				# a better prediction by removing exceptional performers.
+				@merge_times = sort(@merge_times);
+				@merge_times = @merge_times[1..8] if $#merge_times > 9;
+
+				$e_count = 1;
+				$tm_secondi = sum(@merge_times) / $#merge_times;
+			}
+
+			&gtime($tm_secondi - ($e_end - $e_start));
+			if (($e_end - $e_start) >= $tm_secondi)
 			{
 				print colored("any time now.\n", $COLORS{'green'});
 			}
