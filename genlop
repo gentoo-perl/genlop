@@ -726,7 +726,7 @@ sub current()
 	if (scalar @targets == 0)
 	{
 		print colored("!!!", $COLORS{'red'});
-		print "oops! should not happen, pease file bug\n";
+		print "oops! should not happen, please file a bug\n";
 		print "empty \@targets\n";
 		exit 1;
 	}
@@ -932,7 +932,7 @@ sub info($)
 						push(@unused_use, $use);
 					}
 
-					# finally we print'em out
+					# finally we print 'em out
 					print "   USE=\"", colored("@used_use", $COLORS{'red'});
 					foreach my $unused (@unused_use)
 					{
