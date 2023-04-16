@@ -161,7 +161,7 @@ sub open_file
 	}
 }
 
-# orderes logfiles by date
+# orders logfiles by date
 sub order_logs (@)
 {
 	my @files = @_;
