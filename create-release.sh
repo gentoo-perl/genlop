@@ -8,10 +8,10 @@ else
 	exit 1
 fi
 
-echo "Creating genlop-${version}.tar.gz ..."
+echo "Creating genlop-${version}.tar.xz ..."
 mkdir genlop-${version}
 cp -p COPYING  Changelog  README  genlop  genlop.1  genlop.bash-completion genlop-${version}
 sed -i "s/version  = \"9999\"/version  = \"${version}\"/" genlop-${version}/genlop
-tar cvzf genlop-${version}.tar.gz genlop-${version}
+tar cvaf genlop-${version}.tar.xz genlop-${version}
 rm -rf genlop-${version}
 exit 0
