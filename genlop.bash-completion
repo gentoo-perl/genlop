@@ -18,7 +18,7 @@ _genlop()
 	COMPREPLY=()
 	portagedir="$(portageq envvar PORTDIR 2>/dev/null)"
 	if [[ -z "${portagedir}" ]]; then
-	    portagedir="/usr/portage"
+	    portagedir="/var/db/repos/gentoo"
 	fi
 	cur="${COMP_WORDS[COMP_CWORD]}"
 
