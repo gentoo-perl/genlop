@@ -794,10 +794,10 @@ sub current()
 				# Now slice off the worst and best performing time to create
 				# a better prediction by removing exceptional performers.
 				@merge_times = sort(@merge_times);
-				@merge_times = @merge_times[1..8] if $#merge_times > 9;
+				@merge_times = @merge_times[1..8] if $#merge_times > 8;
 
 				$e_count = 1;
-				$tm_secondi = sum(@merge_times) / $#merge_times;
+				$tm_secondi = sum(@merge_times) / ($#merge_times + 1);
 			}
 
 			&gtime($tm_secondi - ($e_end - $e_start));
